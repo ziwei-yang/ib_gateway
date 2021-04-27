@@ -6,7 +6,7 @@ import java.util.Date;
 import org.apache.commons.lang3.StringUtils;
 
 public class DebugUtil {
-	static final SimpleDateFormat TIME_HEADER = new SimpleDateFormat("MM/dd-HH:mm:ss.S");
+	static final SimpleDateFormat TIME_HEADER = new SimpleDateFormat("MM/dd-HH:mm:ss.SSS");
 	static int MAX_HEAD_LEN = 20;
 	public static void log(Object o) {
 		String head = null;

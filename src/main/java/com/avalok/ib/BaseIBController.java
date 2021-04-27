@@ -19,82 +19,82 @@ public abstract class BaseIBController implements IConnectionHandler {
 	//////////////////////////////////////////////////////
 	// Callback methods, with active handler detection.
 	//////////////////////////////////////////////////////
-	protected IConnectionHandler activeIBConnectionHandler;
-	protected IConnectionHandler assignNewIConnectionHandler() {
+	protected IConnectionHandler _activeIBConnectionHandler;
+	protected IConnectionHandler _assignNewIConnectionHandler() {
 		IConnectionHandler handler = new IConnectionHandler() {
 			public void connected() {
-				if (this != activeIBConnectionHandler) {
+				if (this != _activeIBConnectionHandler) {
 					log("Ignore obsolete IBConnectionHandler event: connected");
 					return;
 				}
 				BaseIBController.this.connected();
 			}
 			public void disconnected() {
-				if (this != activeIBConnectionHandler) {
+				if (this != _activeIBConnectionHandler) {
 					log("Ignore obsolete IBConnectionHandler event: disconnected");
 					return;
 				}
 				BaseIBController.this.disconnected();
 			}
 			public void accountList(List<String> list) {
-				if (this != activeIBConnectionHandler) {
+				if (this != _activeIBConnectionHandler) {
 					log("Ignore obsolete IBConnectionHandler event: accountList");
 					return;
 				}
 				BaseIBController.this.accountList(list);
 			}
 			public void error(Exception e) {
-				if (this != activeIBConnectionHandler) {
+				if (this != _activeIBConnectionHandler) {
 					log("Ignore obsolete IBConnectionHandler event: error");
 					return;
 				}
 				BaseIBController.this.error(e);
 			}
 			public void message(int id, int errorCode, String errorMsg) {
-				if (this != activeIBConnectionHandler) {
+				if (this != _activeIBConnectionHandler) {
 					log("Ignore obsolete IBConnectionHandler event: message");
 					return;
 				}
 				BaseIBController.this.message(id, errorCode, errorMsg);
 			}
 			public void show(String string) {
-				if (this != activeIBConnectionHandler) {
+				if (this != _activeIBConnectionHandler) {
 					log("Ignore obsolete IBConnectionHandler event: show");
 					return;
 				}
 				BaseIBController.this.show(string);
 			}
 		};
-		activeIBConnectionHandler = handler;
+		_activeIBConnectionHandler = handler;
 		return handler;
 	}
 
-	protected String name = "unamed";
-	public String name(){ return name; }
+	protected String _name = "unamed";
+	public String name(){ return _name; }
 	
 	//////////////////////////////////////////////////////
 	// Cache historical messages.
 	//////////////////////////////////////////////////////
-	protected final Queue<JSONObject> _ib_messages = new ConcurrentLinkedQueue<>();
-	protected final int MAX_HIS_MSG = 1000;
-	protected long connectedTimestamp = 0;
-	protected long initConnectTimestamp = 0;
+	protected final Queue<JSONObject> _ibMsgs = new ConcurrentLinkedQueue<>();
+	protected static final int MAX_HIS_MSG = 1000;
+	protected long _connectedTS = 0;
+	protected long _initConnTS = System.currentTimeMillis(); // Prepare to connect in initialisation.
 	public BaseIBController() {
 		for (int i = 0; i < MAX_HIS_MSG; i++)
-			_ib_messages.add(new JSONObject());
-		initConnectTimestamp = System.currentTimeMillis();
+			_ibMsgs.add(new JSONObject());
 		connect();
 	}
 
 	protected JSONObject recordMessage(int orderID, int errorCode, String errorMsg) {
+		log("recordMessage() orderID " + orderID + " errorCode " + errorCode + " " + errorMsg);
 		JSONObject msg = new JSONObject();
 		msg.put("timestamp", System.currentTimeMillis());
 		msg.put("order_id", orderID);
 		msg.put("error_code", errorCode);
 		msg.put("error_msg", errorMsg);
-		_ib_messages.add(msg);
+		_ibMsgs.add(msg);
 		// Keep size of message history.
-		_ib_messages.poll();
+		_ibMsgs.poll();
 		return msg;
 	}
 
@@ -103,7 +103,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 		int from = MAX_HIS_MSG - size;
 		if (from < 0) from = 0;
 		int to = MAX_HIS_MSG;
-		Object[] msgs = Arrays.copyOfRange(_ib_messages.toArray(), from, to);
+		Object[] msgs = Arrays.copyOfRange(_ibMsgs.toArray(), from, to);
 		JSONObject[] results = new JSONObject[size];
 		for (int i = 0; i < size; i++)
 			results[i] = (JSONObject)(msgs[size - 1 - i]);
@@ -116,11 +116,11 @@ public abstract class BaseIBController implements IConnectionHandler {
 	public final static String TWS_API_ADDR = System.getenv("TWS_API_ADDR");
 	public final static int TWS_API_PORT = Integer.parseInt(System.getenv("TWS_API_PORT"));
 	public final static String TWS_NAME = TWS_API_ADDR + "_" + TWS_API_PORT;
-	protected int _ibGatewayID = Integer.parseInt(System.getenv("TWS_API_CLIENTID"));
+	protected int _apiClientID = Integer.parseInt(System.getenv("TWS_API_CLIENTID"));
 	protected synchronized void connect() {
 		// DebugUtil.printStackInfo();
-		if (initConnectTimestamp <= 0) {
-			log("initConnectTimestamp <= 0, abort connect()");
+		if (_initConnTS <= 0) {
+			log("_initConnTS <= 0, abort connect()");
 			return;
 		}
 		new Thread(new Runnable() {
@@ -129,23 +129,23 @@ public abstract class BaseIBController implements IConnectionHandler {
 				log("Connect thread started.");
 				while (true) {
 					try {
-						log("Connecting gateway " + TWS_API_ADDR + " ID " + _ibGatewayID);
+						log("Connecting gateway " + TWS_API_ADDR + " ID " + _apiClientID);
 						// TODO this step might hang.
-						IBApiController newController = new IBApiController(assignNewIConnectionHandler(), new NullIBLogger(), new NullIBLogger());
-				        // make initial connection to local host, port 7496, client id 0, no connection options
-						newController.connect(TWS_API_ADDR, TWS_API_PORT, _ibGatewayID, null);
+						IBApiController newController = new IBApiController(_assignNewIConnectionHandler(), new NullIBLogger(), new NullIBLogger());
+						// make initial connection to local host, port 7496, client id 0, no connection options
+						newController.connect(TWS_API_ADDR, TWS_API_PORT, _apiClientID, null);
 						_apiController = newController;  // Only assign after connect()
-						connectedTimestamp = System.currentTimeMillis();
-						log("Gateway connected with client ID " + _ibGatewayID);
+						_connectedTS = System.currentTimeMillis();
+						log("Gateway connected with client ID " + _apiClientID);
 						break;
 					} catch (StackOverflowError e) {
-						log("StackOverflowError in connecting gateway with ID " + _ibGatewayID + " retry_ct:" + retry_ct);
+						log("StackOverflowError in connecting gateway with ID " + _apiClientID + " retry_ct:" + retry_ct);
 					} catch (Exception e) {
-						log("Error in connecting gateway with ID " + _ibGatewayID + " retry_ct:" + retry_ct);
+						log("Error in connecting gateway with ID " + _apiClientID + " retry_ct:" + retry_ct);
 						log(e);
 					} finally {
 						retry_ct += 1;
-						_ibGatewayID++;
+						_apiClientID++;
 						sleep(50);
 					}
 				}
@@ -157,50 +157,47 @@ public abstract class BaseIBController implements IConnectionHandler {
 	//////////////////////////////////////////////////////
 	// Connectivity & Status Set/Get functions
 	//////////////////////////////////////////////////////
-	protected boolean _api_connected = false, _tws_server_connected = false;
+	protected boolean _apiConnected = false, _twsConnected = false;
 
-	protected void markTWSDisconnect() {
-		_tws_server_connected = false;
-		log("twsDisconnect() _api_connected:" + _api_connected + " _tws_server_connected:" + _tws_server_connected);
+	protected void markTWSServerDisconnected() {
+		_twsConnected = false;
+		log("markTWSServerDisconnected() _apiConnected:" + _apiConnected + " _twsConnected:" + _twsConnected);
 		// DebugUtil.printStackInfo();
 	}
-	protected void markTWSConnect(boolean dataLost) {
-		_api_connected = true;
-		_tws_server_connected = true;
-		log("twsConnect() dataLost:" + dataLost + " _api_connected:" + _api_connected + " _tws_server_connected:" + _tws_server_connected);
+	protected void markTWSServerConnected(boolean dataLost) {
+		_apiConnected = true;
+		_twsConnected = true;
+		log("markTWSServerConnected() dataLost:" + dataLost + " _apiConnected:" + _apiConnected + " _twsConnected:" + _twsConnected);
 		// DebugUtil.printStackInfo();
 	}
 	public boolean checkStatus(){
-		return _api_connected && _tws_server_connected;
+		return _apiConnected && _twsConnected;
 	}
 
 	////////////////////////////////////////////////////////////////
 	// IConnectionHandler <-> TWS connectivity
 	////////////////////////////////////////////////////////////////
 	public boolean isConnected() {
-		return _api_connected && _tws_server_connected;
+		return _apiConnected && _twsConnected;
 	}
 
-	protected void preDisconnect() {}
-
-	protected final long RECONNECT_DELAY = 20_000;
+	protected static final long RECONNECT_DELAY = 20_000;
 	protected synchronized void markDisconnected() {
 		markDisconnected(RECONNECT_DELAY);
 	}
 	protected synchronized void markDisconnected(long reconnectDelay) {
 		// DebugUtil.printStackInfo();
-		preDisconnect();
 		// Mark flag as disconnected.
-		_api_connected = false;
-		log("_api_connected:" + _api_connected + " _tws_server_connected:" + _tws_server_connected);
+		_apiConnected = false;
+		log("markDisconnected() _apiConnected:" + _apiConnected + " _twsConnected:" + _twsConnected);
 
-		if (initConnectTimestamp <= 0)
-			initConnectTimestamp = System.currentTimeMillis() + reconnectDelay;
+		if (_initConnTS <= 0)
+			_initConnTS = System.currentTimeMillis() + reconnectDelay;
 
 		if (_apiController == null)
 			return;
 		try {
-			log("Remove and disconnect old APIController...");
+			log("markDisconnected() Remove and disconnect old APIController...");
 			ApiController old_controller = _apiController;
 			_apiController = null;
 			old_controller.disconnect();
@@ -213,12 +210,12 @@ public abstract class BaseIBController implements IConnectionHandler {
 	//////////////////////////////////////////////////////
 	@Override
 	public void connected() {
-		_api_connected = true;
-		_tws_server_connected = true;
-		// Abort futher reconnect attempt.
-		initConnectTimestamp = 0l;
+		_apiConnected = true;
+		_twsConnected = true;
+		// Abort further reconnect attempt.
+		_initConnTS = 0l;
 		recordMessage(0, 0, "IB APIController connected");
-		log("connected() _api_connected:" + _api_connected + " _tws_server_connected:" + _tws_server_connected);
+		log("connected() _apiConnected:" + _apiConnected + " _twsConnected:" + _twsConnected);
 		// DebugUtil.printStackInfo();
 		postConnected();
 	}
@@ -233,10 +230,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 		// Set controller NULL then mark flags as disconnected.
 		_apiController = null;
 		markDisconnected();
-
 		// Reconnect automatically.
-		if (initConnectTimestamp <= 0)
-			initConnectTimestamp = System.currentTimeMillis() + RECONNECT_DELAY;
 		connect();
 	}
 	
@@ -257,12 +251,14 @@ public abstract class BaseIBController implements IConnectionHandler {
 		recordMessage(0, 0, "IB Error received:" + e.toString());
 		e.printStackTrace();
 		if (e instanceof java.io.EOFException) {
-			long timeElapsed = System.currentTimeMillis() - connectedTimestamp; // ignore EOF error in 5 seconds after connected.
-			log("TWS EOFException after connectedTimestamp:" + timeElapsed);
+			long timeElapsed = System.currentTimeMillis() - _connectedTS; // ignore EOF error in 5 seconds after connected.
+			log("TWS EOFException after _connectedTS:" + timeElapsed);
 			if (timeElapsed > 5000)
 				markDisconnected();
+			else
+				log("TWS EOFException ignored");
 		} else if (e instanceof java.net.SocketException) {
-			log("Seems like TWS is not ready.");
+			log("SocketException caught, seems TWS is not ready, markDisconnected().");
 			markDisconnected();
 		}
 	}
@@ -271,8 +267,10 @@ public abstract class BaseIBController implements IConnectionHandler {
 	public String lastAckErrorMsg = "";
 	@Override
 	public void message(int id, int errorCode, String errorMsg) {
+		// TODO need error code reference webpage URL.
 		switch (errorCode) {
 			case 200: // No security definition has been found for the request
+				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				StringBuilder sb = new StringBuilder();
 				String[] his = _apiController.lastOperationHistory();
 				for (String s : his) {
@@ -297,41 +295,47 @@ public abstract class BaseIBController implements IConnectionHandler {
 				break;
 			case 1100: // Connectivity between IB and TWS has been lost.
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
-				_tws_server_connected = false;
+				_twsConnected = false;
 				markDisconnected();
 				break;
 			case 1101: // Connectivity between IB and TWS has been restored- data lost.
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
-				_tws_server_connected = true;
-				markTWSConnect(true);
+				_twsConnected = true;
+				markTWSServerConnected(true);
 				break;
 			case 1102: // Connectivity between IB and TWS has been restored- data maintained.
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
-				_tws_server_connected = true;
-				markTWSConnect(false);
+				_twsConnected = true;
+				markTWSServerConnected(false);
 				break;
 			case 1300: // Socket port has been reset and this connection is being dropped. Please reconnect on the new port -4002
-				log(errorMsg);
+				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				// String[] segs = errorMsg.split("-");
 				// TWS_API_PORT = Integer.parseInt(segs[segs.length - 1]); // Should not be changed.
 				disconnected();
 				break;
 			case 2103: // Market data farm connection is broken
+				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 			case 2104: // Market data farm connection is OK
 				break;
 			case 2105: // HMDS data farm connection is broken
+				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 			case 2106: // HMDS data farm connection is OK
 				break;
 			case 2107: // HMDS data farm connection is inactive but should be available upon demand.hthmds
+				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 			case 2108: // Market data farm connection is inactive but should be available upon demand.usfarm
+				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 			case 2110: // Connectivity between Trader Workstation and server is broken. It will be restored automatically.
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				markDisconnected();
 				// twsDisconnect(); // Sometimes it wont be restored automatically. WTF!
+				break;
+			case 2158: // Sec-def data farm connection is OK:secdefhk
 				break;
 			default:
 				if (lastAckErrorCode != errorCode || lastAckErrorMsg.equals(errorMsg) == false)
@@ -356,7 +360,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 				if (checkStatus())
 					break;
 				if (ct == 0) {
-					log("Waiting for status ready: _api_connected:" + _api_connected + " _tws_server_connected:" + _tws_server_connected);
+					log("Waiting for status ready: _apiConnected:" + _apiConnected + " _twsConnected:" + _twsConnected);
 					// DebugUtil.printStackInfo();
 				}
 				ct += 1;

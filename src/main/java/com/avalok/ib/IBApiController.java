@@ -9,8 +9,7 @@ import com.ib.controller.ApiConnection.*;
 import static com.bitex.util.DebugUtil.*;
 
 /**
- * Gateway of sending TWS API requests.
- * Control API speed and other proxy.
+ * A warpper of ApiController for rate control and other proxy.
  */
 public class IBApiController extends ApiController {
 	public IBApiController(IConnectionHandler handler, ILogger inLogger, ILogger outLogger) {
@@ -18,42 +17,42 @@ public class IBApiController extends ApiController {
 	}
 
 	////////////////////////////////////////////////////////////////
-	// Operation history.
+	// API Operation history.
 	////////////////////////////////////////////////////////////////
-	protected ConcurrentLinkedQueue<String> operationHistory = new ConcurrentLinkedQueue<>();
+	protected final ConcurrentLinkedQueue<String> _opRecs = new ConcurrentLinkedQueue<>();
 	protected static final int OPERATION_HISTORY_MAX = 5;
 	
 	protected void recordOperationHistory(String his) {
-		operationHistory.add(his);
-		if (operationHistory.size() > OPERATION_HISTORY_MAX)
-			operationHistory.poll();
+		_opRecs.add(his);
+		if (_opRecs.size() > OPERATION_HISTORY_MAX)
+			_opRecs.poll();
 	}
 
 	public String[] lastOperationHistory() {
 		String[] ret = new String[OPERATION_HISTORY_MAX];
-		return operationHistory.toArray(ret);
+		return _opRecs.toArray(ret);
 	}
 
 	////////////////////////////////////////////////////////////////
 	// TWS API Rate controller
 	////////////////////////////////////////////////////////////////
-	protected final int MAX_IB_API_RATE = 48;
-	protected final ConcurrentLinkedQueue<Long> _api_recs = new ConcurrentLinkedQueue<>();
+	protected static final int MAX_IB_API_RATE = 48; // TODO Where is limitation explanation?
+	protected final ConcurrentLinkedQueue<Long> _apiRecs = new ConcurrentLinkedQueue<>();
 	
 	protected void twsAPIRateControl() {
-		synchronized(_api_recs) {
-			if (_api_recs.size() >= MAX_IB_API_RATE) {
-				long oldestTime = _api_recs.poll();
-				while (_api_recs.size() >= MAX_IB_API_RATE)
-					_api_recs.poll();
+		synchronized(_apiRecs) {
+			if (_apiRecs.size() >= MAX_IB_API_RATE) {
+				long oldestTime = _apiRecs.poll();
+				while (_apiRecs.size() >= MAX_IB_API_RATE)
+					_apiRecs.poll();
 				// Wait until 1s after the oldestTime
 				long waitTime = 1000 - (System.currentTimeMillis() - oldestTime);
 				if (waitTime > 0) {
-					log("TWS api rate reached: " + MAX_IB_API_RATE + "/s, halt " + waitTime + "ms");
+					log("TWS api rate reached: " + MAX_IB_API_RATE + "/s, halt for " + waitTime + "ms");
 					sleep(waitTime);
 				}
 			}
-			_api_recs.add(System.currentTimeMillis());
+			_apiRecs.add(System.currentTimeMillis());
 		}
 	}
 
@@ -139,12 +138,5 @@ public class IBApiController extends ApiController {
 		twsAPIRateControl();
 		recordOperationHistory("cancelRealtimeBars");
 		super.cancelRealtimeBars(handler);
-	}
-
-	protected void sleep(long t) {
-		if (t <= 0) return;
-		try {
-			Thread.sleep(t);
-		} catch (Exception e) {}
 	}
 }

@@ -10,7 +10,7 @@ cd $DIR
 [ -z $1 ] && echo "Need args" && exit 1
 if [[ $1 == src ]]; then
 	shift
-	mvn exec:java $@
+	mvn compile && mvn exec:java $@
 else
 	echo "Unknown args $@"
 	exit 1
