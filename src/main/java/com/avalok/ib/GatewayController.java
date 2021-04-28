@@ -19,6 +19,14 @@ public class GatewayController extends BaseIBController {
 	public static void main(String[] args) throws Exception {
 		new GatewayController().listenCommand();
 	}
+	
+	public GatewayController() {
+		Runtime.getRuntime().addShutdownHook(new Thread() {
+			public void run() {
+				err("!!!! Shutdown signal received");
+			}
+		});
+	}
 
 	////////////////////////////////////////////////////////////////
 	// Market data module
@@ -119,11 +127,11 @@ public class GatewayController extends BaseIBController {
 				@Override
 				public void accept(Jedis t) {
 					String cmdChannel = "URANUS:IBGateway:"+_name+":CMD";
-					log("Command listening started at " + cmdChannel);
+					info("Command listening started at " + cmdChannel);
 					t.subscribe(commandProcessJedisPubSub, cmdChannel);
 				}
 			});
-			log("Restart command listening in 1 second");
+			err("Restart command listening in 1 second");
 			sleep(1000);
 		}
 	}

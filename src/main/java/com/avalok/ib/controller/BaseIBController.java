@@ -239,7 +239,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 
 	@Override
 	public void accountList(List<String> list) {
-		log("Received account list: " + JSON.toJSONString(list));
+		info("<-- account list: " + JSON.toJSONString(list));
 		if (accList != null) {
 			accList.clear();
 			accList.addAll(list);
@@ -248,7 +248,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 
 	@Override
 	public void error(Exception e) {
-		log("IB error received");
+		err("IB Error received:" + e.toString());
 		recordMessage(0, 0, "IB Error received:" + e.toString());
 		e.printStackTrace();
 		if (e instanceof java.io.EOFException) {
