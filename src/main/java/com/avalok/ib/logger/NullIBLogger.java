@@ -1,4 +1,4 @@
-package com.avalok.ib;
+package com.avalok.ib.logger;
 
 import com.ib.controller.ApiConnection.*;
 

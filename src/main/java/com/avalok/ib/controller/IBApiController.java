@@ -1,4 +1,4 @@
-package com.avalok.ib;
+package com.avalok.ib.controller;
 
 import java.util.concurrent.ConcurrentLinkedQueue;
 
