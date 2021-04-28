@@ -5,8 +5,6 @@ import com.ib.client.Types.*;
 
 import com.alibaba.fastjson.JSONObject;
 
-import static com.bitex.util.DebugUtil.*;
-
 /**
  * Wrapper of Contract
  */
@@ -22,8 +20,12 @@ public class IBContract extends Contract {
 	 * USD.HKD as FX TODO
 	 * currency-symbol as STK
 	 * currency-symbol@expiry as FUT
+	 * currency-symbol@expiry@multiplier as FUT
 	 * USD-TSLA
-	 * USD-BTC@20210625
+	 * USD-BAKKT@20210625
+	 * USD-BAKKT@202106
+	 * USD-BRR@202106@5
+	 * USD-BRR@202106@0.1
 	 * HKD-1137
 	 */
 	public IBContract(String exchange, String shownName) throws Exception {
@@ -34,14 +36,30 @@ public class IBContract extends Contract {
 			currency(segs[0]);
 			symbol(segs[1]);
 			secType("STK");
-		} else if (shownName.matches("^[A-Z]{3,5}-[A-Z0-9.]{1,8}@[0-9]{6,8}$")) {
+		} else if (shownName.matches("^[A-Z]{3,5}-[A-Z0-9.]{1,8}@[0-9]{6,8}(@[0-9.]*|)$")) {
 			String[] segs = shownName.split("@");
 			lastTradeDateOrContractMonth(segs[1]);
+			if (segs.length >= 3)
+				multiplier(segs[2]);
 			segs = segs[0].split("-");
 			currency(segs[0]);
 			symbol(segs[1]);
 			secType("FUT");
+			// TODO Complement of expiry
 		} else throw new Exception("Unknwon contract descrption " + shownName);
+	}
+	
+	/**
+	 * Converted symbol used in universal system.
+	 */
+	public String standard_symbol() {
+		if (exchange().equals("ICECRYPTO") && symbol().equals("BAKKT"))
+			return "BTC";
+		if (exchange().equals("CMECRYPTO") && symbol().equals("BRR") && multiplier().equals("5"))
+			return "BTC";
+		if (exchange().equals("CMECRYPTO") && symbol().equals("BRR") && multiplier().equals("0.1"))
+			return "BTC";
+		return symbol();
 	}
 
 	public IBContract(JSONObject j) {

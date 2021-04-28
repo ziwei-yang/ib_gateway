@@ -70,7 +70,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 		return handler;
 	}
 
-	protected String _name = "unamed";
+	protected String _name = System.getenv("TWS_GATEWAY_NAME");
 	public String name(){ return _name; }
 	
 	//////////////////////////////////////////////////////

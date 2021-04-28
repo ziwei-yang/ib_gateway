@@ -29,6 +29,12 @@ public class DebugUtil {
 		String time_str = TIME_HEADER.format(new Date());
 		System.out.println(time_str + " " + head + " " + o.toString());
 	}
+	public static void err(Object o) {
+		log(red(o));
+	}
+	public static void info(Object o) {
+		log(blue(o));
+	}
 	public static void printStackTrace() {
 		printStackInfo();
 	}
@@ -70,4 +76,36 @@ public class DebugUtil {
 			Thread.sleep(t);
 		} catch (Exception e) {}
 	}
+	
+	////////////////////////////////////////////////////////////////
+	// CLI Colour control
+	////////////////////////////////////////////////////////////////
+	public static String reverse(Object o) { return ("\033[07m" + o.toString() + "\033[0m"); }
+	
+	public static String black  (Object o) { return ("\033[30m" + o.toString() + "\033[0m"); }
+	public static String red    (Object o) { return ("\033[31m" + o.toString() + "\033[0m"); }
+	public static String green  (Object o) { return ("\033[32m" + o.toString() + "\033[0m"); }
+	public static String yellow (Object o) { return ("\033[33m" + o.toString() + "\033[0m"); }
+	public static String blue   (Object o) { return ("\033[34m" + o.toString() + "\033[0m"); }
+	public static String magenta(Object o) { return ("\033[35m" + o.toString() + "\033[0m"); }
+	public static String cyan   (Object o) { return ("\033[36m" + o.toString() + "\033[0m"); }
+	public static String white  (Object o) { return ("\033[37m" + o.toString() + "\033[0m"); }
+	
+	public static String l_black (Object o) { return ("\033[90m" + o.toString() + "\033[0m"); }
+	public static String l_red   (Object o) { return ("\033[91m" + o.toString() + "\033[0m"); }
+	public static String l_green (Object o) { return ("\033[92m" + o.toString() + "\033[0m"); }
+	public static String l_yellow(Object o) { return ("\033[93m" + o.toString() + "\033[0m"); }
+	public static String l_blue  (Object o) { return ("\033[94m" + o.toString() + "\033[0m"); }
+	public static String l_magenta(Object o) { return ("\033[95m" + o.toString() + "\033[0m"); }
+	public static String l_cyan  (Object o) { return ("\033[96m" + o.toString() + "\033[0m"); }
+	public static String l_white (Object o) { return ("\033[97m" + o.toString() + "\033[0m"); }
+	
+	public static String on_black(Object o) { return ("\033[40m" + o.toString() + "\033[0m"); }
+	public static String on_red  (Object o) { return ("\033[41m" + o.toString() + "\033[0m"); }
+	public static String on_green(Object o) { return ("\033[42m" + o.toString() + "\033[0m"); }
+	public static String on_yellow(Object o) { return ("\033[43m" + o.toString() + "\033[0m"); }
+	public static String on_blue (Object o) { return ("\033[44m" + o.toString() + "\033[0m"); }
+	public static String on_magenta(Object o) { return ("\033[45m" + o.toString() + "\033[0m"); }
+	public static String on_cyan(Object o) { return ("\033[46m" + o.toString() + "\033[0m"); }
+	public static String on_white(Object o) { return ("\033[47m" + o.toString() + "\033[0m"); }
 }

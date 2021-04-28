@@ -1,12 +1,13 @@
 package com.avalok.ib.controller;
 
+import static com.bitex.util.DebugUtil.*;
+
 import java.util.concurrent.ConcurrentLinkedQueue;
 
+import com.avalok.ib.IBContract;
 import com.ib.client.*;
 import com.ib.controller.*;
 import com.ib.controller.ApiConnection.*;
-
-import static com.bitex.util.DebugUtil.*;
 
 /**
  * A warpper of ApiController for rate control and other proxy.
@@ -23,6 +24,7 @@ public class IBApiController extends ApiController {
 	protected static final int OPERATION_HISTORY_MAX = 5;
 	
 	protected void recordOperationHistory(String his) {
+		info("--> " + his);
 		_opRecs.add(his);
 		if (_opRecs.size() > OPERATION_HISTORY_MAX)
 			_opRecs.poll();
@@ -84,16 +86,16 @@ public class IBApiController extends ApiController {
 		recordOperationHistory("cancelTopMktData");
 		super.cancelTopMktData(handler);
 	}
-//	public void reqDeepMktData(NewContract contract, int numRows, IDeepMktDataHandler handler) {
-//		twsAPIRateControl();
-//		recordOperationHistory("reqDeepMktData:" + JSON.toJSONString(contract));
-//		super.reqDeepMktData(contract, numRows, handler);
-//	}
-//	public void cancelDeepMktData(IDeepMktDataHandler handler) {
-//		twsAPIRateControl();
-//		recordOperationHistory("cancelDeepMktData");
-//		super.cancelDeepMktData(handler);
-//	}
+	public void reqDeepMktData(IBContract contract, int numRows, boolean isSmartDepth, IDeepMktDataHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("reqDeepMktData:" + contract.shownName());
+		super.reqDeepMktData(contract, numRows, isSmartDepth, handler);
+	}
+	public void cancelDeepMktData(boolean isSmartDepth, IDeepMktDataHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("cancelDeepMktData");
+		super.cancelDeepMktData(isSmartDepth, handler);
+	}
 	public void reqExecutions(ExecutionFilter filter, ITradeReportHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqExecutions");

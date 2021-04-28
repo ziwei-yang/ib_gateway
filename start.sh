@@ -5,6 +5,7 @@ DIR="$( cd -P "$( dirname "$SOURCE" )" && pwd )"
 export TWS_API_ADDR=127.0.0.1
 export TWS_API_PORT=23456
 export TWS_API_CLIENTID=1000
+export TWS_GATEWAY_NAME=zwyang
 
 source $DIR/../uranus/conf/env2.sh
 
