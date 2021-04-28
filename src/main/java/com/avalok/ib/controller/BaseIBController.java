@@ -344,7 +344,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 				break;
 			default:
 				if (lastAckErrorCode != errorCode || lastAckErrorMsg.equals(errorMsg) == false)
-					log("Unhandled Message: id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
+					warn("Unhandled Message: id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 		}
 	}
@@ -365,7 +365,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 				if (isConnected())
 					break;
 				if (ct == 0) {
-					log("Waiting for status ready: _apiConnected:" + _apiConnected + " _twsConnected:" + _twsConnected);
+					warn("Waiting for status ready: _apiConnected:" + _apiConnected + " _twsConnected:" + _twsConnected);
 					// DebugUtil.printStackInfo();
 				}
 				ct += 1;

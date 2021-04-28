@@ -35,6 +35,10 @@ public class DebugUtil {
 	public static void info(Object o) {
 		log(blue(o));
 	}
+	public static void warn(Object o) {
+		log(yellow(o));
+	}
+	
 	public static void printStackTrace() {
 		printStackInfo();
 	}
