@@ -117,7 +117,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 	public final static String TWS_API_ADDR = System.getenv("TWS_API_ADDR");
 	public final static int TWS_API_PORT = Integer.parseInt(System.getenv("TWS_API_PORT"));
 	public final static String TWS_NAME = TWS_API_ADDR + "_" + TWS_API_PORT;
-	protected int _apiClientID = Integer.parseInt(System.getenv("TWS_API_CLIENTID"));
+	protected int _apiClientID = Integer.parseInt(System.getenv("TWS_API_CLIENTID")); // Only the default client (i.e 0) can auto bind orders
 	protected synchronized void _connect() {
 		// DebugUtil.printStackInfo();
 		if (isConnected()) {
@@ -152,7 +152,6 @@ public abstract class BaseIBController implements IConnectionHandler {
 						log(e);
 					} finally {
 						retry_ct += 1;
-						_apiClientID++;
 						sleep(50);
 					}
 				}

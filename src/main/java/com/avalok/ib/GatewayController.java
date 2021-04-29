@@ -3,14 +3,18 @@ package com.avalok.ib;
 import static com.bitex.util.DebugUtil.*;
 
 import java.util.Collection;
+import java.util.Timer;
+import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.controller.BaseIBController;
-import com.avalok.ib.handler.DeepMktDataHandler;
+import com.avalok.ib.handler.*;
 import com.bitex.util.Redis;
+
+import com.ib.client.*;
 
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
@@ -21,11 +25,30 @@ public class GatewayController extends BaseIBController {
 	}
 	
 	public GatewayController() {
+		ContractDetailsHandler.GW_CONTROLLER = this;
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				err("!!!! Shutdown signal received");
 			}
 		});
+		// Keep updating working status '[true, timestamp]' in 
+		// Redis/IBGateway:{name}:status every second.
+		// If this status goes wrong, all other data could not be trusted.
+		long liveStatusInvertal = 1000;
+		final String liveStatusKey = "IBGateway:" + _name + ":status";
+		new Timer("GatewayControllerLiveStatusWriter").scheduleAtFixedRate(new TimerTask() {
+			@Override
+			public void run() {
+				Redis.exec(new Consumer<Jedis>() {
+					@Override
+					public void accept(Jedis t) {
+						String liveStatusData = "[" + isConnected() + "," + System.currentTimeMillis() + "]";
+						// log("--> Write " + liveStatusKey + " " + liveStatusData);
+						t.set(liveStatusKey, liveStatusData);
+					}
+				});
+			}
+		}, 0, liveStatusInvertal);
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -76,16 +99,50 @@ public class GatewayController extends BaseIBController {
 			subscribeMarketData(h.contract());
 		}
 	}
-
-	protected void _subscribeExample() {
-		try {
-//			subscribeMarketData(new IBContract("TSE", "USD-BTCC.U"));
-//			subscribeMarketData(new IBContract("ICECRYPTO", "USD-BAKKT@202105"));
-//			subscribeMarketData(new IBContract("CMECRYPTO", "USD-BRR@202105@5"));
-		} catch (Exception e) {
-			log("Failed to init IBContract " + e.getMessage());
-			return;
-		}
+	
+	////////////////////////////////////////////////////////////////
+	// Account balance
+	////////////////////////////////////////////////////////////////
+	// Use AccountMVHandler instead, PositionHandler does not have CASH balance.
+//	protected PositionHandler posHandler = new PositionHandler();
+//	protected void subscribeAccountPosition() { // TODO Is this streaming updating?
+//		_apiController.reqPositionsMulti("", "", posHandler);
+//	}
+	
+	protected AccountMVHandler accountMVHandler = new AccountMVHandler();
+	protected void subscribeAccountMV() { // TODO Is this streaming updating?
+		boolean subscribe = true;
+		String account = "";
+		_apiController.reqAccountUpdates(subscribe, account, accountMVHandler);
+	}
+	
+	////////////////////////////////////////////////////////////////
+	// Order & trades
+	////////////////////////////////////////////////////////////////
+	protected AllOrderHandler orderCacheHandler = new AllOrderHandler();
+	protected void subscribeTradeReport() {
+		_apiController.reqExecutions(new ExecutionFilter(), orderCacheHandler);
+	}
+	protected void refreshLiveOrders() {
+		_apiController.takeFutureTwsOrders(orderCacheHandler);
+		_apiController.takeTwsOrders(orderCacheHandler);
+		_apiController.reqLiveOrders(orderCacheHandler);
+	}
+	protected void refreshCompletedOrders() {
+		_apiController.reqCompletedOrders(orderCacheHandler);
+	}
+	protected void cancelOrder(int orderId) {
+		_apiController.cancelOrder(orderId);
+	}
+	protected void cancelAll() {
+		_apiController.cancelAllOrders();
+	}
+	
+	////////////////////////////////////////////////////////////////
+	// Contract details query.
+	////////////////////////////////////////////////////////////////
+	public void queryContractList(IBContract contractWithLimitInfo) {
+		_apiController.reqContractDetails(contractWithLimitInfo, new ContractDetailsHandler());
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -94,6 +151,10 @@ public class GatewayController extends BaseIBController {
 	@Override
 	protected void _postConnected() {
 		log("_postConnected");
+		subscribeAccountMV();
+		refreshLiveOrders();
+		refreshCompletedOrders();
+		subscribeTradeReport();
 		restartMarketData();
 	}
 
@@ -103,20 +164,40 @@ public class GatewayController extends BaseIBController {
 			JSONObject j = null;
 			try {
 				j = JSON.parseObject(message);
+			} catch (Exception e) {
+				err("Failed to parse command " + e.getMessage());
+				return;
+			}
+			final Integer id = j.getInteger("id");
+			boolean success = true;
+			try {
 				switch(j.getString("cmd")) {
 				case "SUB_ODBK":
 					subscribeMarketData(j.getString("exchange"), j.getString("shownName"));
 					break;
-				case "SUB_ODBK_RESTART":
-					restartMarketData();
+				case "RESET":
+					_postConnected();
+					break;
+				case "FIND_CONTRACTS":
+					queryContractList(new IBContract(j.getJSONObject("params")));
 					break;
 				default:
+					success = false;
 					err("Unknown cmd " + j.getString("cmd"));
-					return;
+					break;
 				}
 			} catch (Exception e) {
-				err("Failed to parse command " + e.getMessage());
-				return;
+				success = false;
+				e.printStackTrace();
+			} finally { // Reply with id in boradcasting.
+				final boolean replySuccess = success;
+				Redis.exec(new Consumer<Jedis>() {
+					@Override
+					public void accept(Jedis t) {
+						String replyChannel = "IBGateway:"+_name+":ACK";
+						t.publish(replyChannel, "["+id+","+replySuccess+"]");
+					}
+				});
 			}
 		}
 	};
@@ -126,7 +207,7 @@ public class GatewayController extends BaseIBController {
 			Redis.exec(new Consumer<Jedis>() {
 				@Override
 				public void accept(Jedis t) {
-					String cmdChannel = "URANUS:IBGateway:"+_name+":CMD";
+					String cmdChannel = "IBGateway:"+_name+":CMD";
 					info("Command listening started at " + cmdChannel);
 					t.subscribe(commandProcessJedisPubSub, cmdChannel);
 				}
