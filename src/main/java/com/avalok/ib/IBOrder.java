@@ -1,5 +1,6 @@
 package com.avalok.ib;
 
+import com.avalok.ib.handler.ContractDetailsHandler;
 import static com.bitex.util.DebugUtil.*;
 
 import org.apache.commons.lang3.StringUtils;
@@ -16,6 +17,7 @@ public class IBOrder {
 	protected OrderState orderState;
 	public IBOrder(Contract _contract, Order _order, OrderState _orderState) {
 		contract = new IBContract(_contract);
+		ContractDetailsHandler.findDetails(contract);
 		order = _order;
 		orderState = _orderState;
 	}

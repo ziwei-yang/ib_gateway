@@ -185,6 +185,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 	}
 
 	protected static final long RECONNECT_DELAY = 20_000;
+	protected void _postDisconnected() {}
 	protected synchronized void _markDisconnected() {
 		_markDisconnected(RECONNECT_DELAY);
 	}
@@ -204,6 +205,8 @@ public abstract class BaseIBController implements IConnectionHandler {
 			_apiController = null;
 			old_controller.disconnect();
 		} catch (Exception e1) {
+		} finally {
+			_postDisconnected();
 		}
 	}
 

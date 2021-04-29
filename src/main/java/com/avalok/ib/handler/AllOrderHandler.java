@@ -57,6 +57,29 @@ class OrderCache {
 }
 
 public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandler,ITradeReportHandler {
+
+	private boolean _aliveOrderInit = false;
+	private boolean _deadOrderInit = false;
+	private boolean _omsInit = false;
+
+	private void initOMS() {
+		if (_omsInit) {
+			err("Should not call initOMS() when _omsInit is true");
+			return;
+		}
+		if (!_aliveOrderInit || !_deadOrderInit) {
+			err("Should not call initOMS() when _aliveOrderInit " + _aliveOrderInit + " _deadOrderInit " + _deadOrderInit);
+			return;
+		}
+		_omsInit = true;
+		info("Init OMS");
+	}
+
+	public void teardownOMS(String reason) {
+		err("Tear down OMS, reason " + reason);
+		sleep (1000);
+		err("Tear down OMS finished");
+	}
 	
 	////////////////////////////////////////////////////////////////
 	// ITradeReportHandler
@@ -90,6 +113,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		log("<-- completedOrder END");
 		_deadOrders = new OrderCache(_recvCompletedOrder.toArray(new IBOrder[0]));
 		_recvCompletedOrder.clear();
+		_deadOrderInit = true;
+		if (!_omsInit && _aliveOrderInit) initOMS();
 	}
 	
 	////////////////////////////////////////////////////////////////
@@ -136,7 +161,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			// id:-1, code:2158, msg:Sec-def data farm connection is OK:secdefhk
 			// id:-1, code:2106, msg:HMDS data farm connection is OK:hkhmds
 			// Believe BaseIBController could handle that.
-			log("<-- handle omit " + orderId + "," + errorCode + "," + errorMsg);
+			// log("<-- handle omit " + orderId + "," + errorCode + "," + errorMsg);
+			log("<-- handle omit " + orderId + "," + errorCode);
 			return;
 		}
 		boolean process = false;
@@ -177,5 +203,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		_processingOrder = null;
 		_aliveOrders = new OrderCache(_recvOpenOrders.toArray(new IBOrder[0]));
 		_recvOpenOrders.clear();
+		_aliveOrderInit = true;
+		if (!_omsInit && _deadOrderInit) initOMS();
 	}
 }

@@ -29,6 +29,7 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 	public static final Map<String, IBContract> KNOWN_CONTRACTS = new ConcurrentHashMap<>();
 	public static final Map<String, JSONObject> KNOWN_CONTRACT_DETAILS = new ConcurrentHashMap<>();
 	public static GatewayController GW_CONTROLLER = null;
+	public static final Map<String, Long> QUERY_HIS = new ConcurrentHashMap<>();
 
 	public static void fillIBContract(IBContract ibc) {
 		Collection<IBContract> contracts = KNOWN_CONTRACTS.values();
@@ -45,10 +46,7 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			ibc.copyFrom(result);
 			return;
 		}
-		if (GW_CONTROLLER != null) {
-			err("Auto query contract details:" + ibc.shownName());
-			GW_CONTROLLER.queryContractList(ibc);
-		}
+		if (GW_CONTROLLER != null) queryDetails(ibc);
 	}
 
 	public static JSONObject findDetails(IBContract ibc) {
@@ -56,11 +54,17 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			fillIBContract(ibc);
 		JSONObject ret = KNOWN_CONTRACT_DETAILS.get(ibc.shownName());
 		if (ret != null) return ret;
-		if (GW_CONTROLLER != null) {
-			warn("Auto query contract details:" + ibc.shownName());
+		if (GW_CONTROLLER != null) queryDetails(ibc);
+		return null;
+	}
+
+	protected static void queryDetails(IBContract ibc) {
+		Long lastQueryT = QUERY_HIS.get(ibc.shownName());
+		if (lastQueryT == null || lastQueryT + 10_000 < System.currentTimeMillis()) {
+			QUERY_HIS.put(ibc.shownName(), System.currentTimeMillis());
+			warn("--> Auto query contract details:" + ibc.shownName());
 			GW_CONTROLLER.queryContractList(ibc);
 		}
-		return null;
 	}
 
 	////////////////////////////////////////////////////////////////

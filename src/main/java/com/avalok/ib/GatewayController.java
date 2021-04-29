@@ -28,7 +28,7 @@ public class GatewayController extends BaseIBController {
 		ContractDetailsHandler.GW_CONTROLLER = this;
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
-				err("!!!! Shutdown signal received");
+				orderCacheHandler.teardownOMS("Shutting down");
 			}
 		});
 		// Keep updating working status '[true, timestamp]' in 
@@ -156,6 +156,12 @@ public class GatewayController extends BaseIBController {
 		refreshCompletedOrders();
 		subscribeTradeReport();
 		restartMarketData();
+	}
+
+	@Override
+	protected void _postDisconnected() {
+		log("_postDisconnected");
+		orderCacheHandler.teardownOMS("_postDisconnected()");
 	}
 
 	private JedisPubSub commandProcessJedisPubSub = new JedisPubSub() {
