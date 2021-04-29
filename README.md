@@ -22,25 +22,25 @@ Version: API 9.76 Release Date: May 08 2019
 
 # Order Cache behaviour
 
-Start-up:
+### Start-up:
 Refresh all alive orders (complete snapshot), and history orders (may not contain those with 0 trade)
-Setup hashmap at:
-	Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}
-	Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}@{expiry}
-	Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}@{expiry}@{multiplier}
-Redis hashmap internal structure:
-	{ t -> timestamp }
-	{ id -> order\_json }
-	{ client\_oid -> order\_json }
-Then, mark OMS cache running with value '1' at:
-	Redis/URANUS:{exchange}:{name}:OMS
+* Setup hashmap at:
+	- Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}
+	- Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}@{expiry}
+	- Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}@{expiry}@{multiplier}
+* Redis hashmap internal structure:
+	- { t -> timestamp }
+	- { id -> order\_json }
+	- { client\_oid -> order\_json }
+* Then, mark OMS cache running with value '1' at:
+	- Redis/URANUS:{exchange}:{name}:OMS
 
-Work:
-Keep receiving updates from AllOrderHandler
-Broadcast order\_json string at channel:
-	Redis/URANUS:{exchange}:{name}:O\_channel
+### Work:
+* Keep receiving updates from AllOrderHandler
+* Broadcast order\_json string at channel:
+	- Redis/URANUS:{exchange}:{name}:O\_channel
 
-Tear-down:
+### Tear-down:
 mark OMS cache stopped by deleting every Redis/URANUS:{exchange}:{name}:OMS
 
 # Commands and reponses
