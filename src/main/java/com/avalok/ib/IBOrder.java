@@ -21,8 +21,9 @@ public class IBOrder {
 	}
 	
 	// Updated from AllOrderHandler.orderStatus();
-	Double remaining, avgFillPrice, lastFillPrice, mktCapPrice;
+	Double filled, remaining, avgFillPrice, lastFillPrice, mktCapPrice;
 	String whyHeld;
+	boolean statusFilled = false; // Basic status need to be filled before using this order.
 	public void setStatus(
 			int _orderId, OrderStatus _status, double _filled,
 			double _remaining, double _avgFillPrice,
@@ -32,29 +33,36 @@ public class IBOrder {
 			err("setStatus() orderId not coinsistent " + _orderId + "," + order.orderId());
 		if(_permId != order.permId())
 			err("setStatus() permId not coinsistent " + _permId + "," + order.permId());
-		if (order.filledQuantity() != _filled)
-			err("setStatus() filled not coinsistent " + _filled + ","+ order.filledQuantity());
-		if (order.totalQuantity() != _filled + remaining)
-			err("setStatus() size not coinsistent (" + _filled + "+" + remaining + "), "+ order.totalQuantity());
+		if (order.totalQuantity() != _filled + _remaining)
+			err("setStatus() size not coinsistent (" + _filled + "+" + _remaining + "), "+ order.totalQuantity());
 		orderState.status(_status);
 		remaining = _remaining;
+		filled = _filled;
+		order.filledQuantity(_filled);
 		avgFillPrice = _avgFillPrice;
 		lastFillPrice = _lastFillPrice;
 		mktCapPrice = _mktCapPrice;
 		whyHeld = _whyHeld;
+		statusFilled = true;
 		log("<-- orderStatus:\n" + toString());
 	}
 	
-	public void setCompleted() {
-		;
-	}
+	public void setCompleted() { statusFilled = true; }
 
-	public int orderId() {
-		return order.orderId();
-	}
+	public int orderId() { return order.orderId(); }
 	
-	public int permId() {
-		return order.permId();
+	public int permId() { return order.permId(); }
+
+	// Additional status extension, for AllOrderHandler.handle(msg).
+	private String extStatus = null;
+	private String extMsg = null;
+	public void setRejected (String msg) {
+		extStatus = "Rejected";
+		extMsg = msg;
+	}
+	public void setCancelled (String msg) {
+		extStatus = "Cancelled";
+		extMsg = msg;
 	}
 	
 	@Override
@@ -67,17 +75,25 @@ public class IBOrder {
 		sb.append(StringUtils.rightPad(""+order.lmtPrice(), 8));
 		
 		// execute/total
-		if (order.filledQuantity() == 0)
-			sb.append(StringUtils.leftPad("", 8));
-		else
+		if (statusFilled)
 			sb.append(StringUtils.leftPad("" + order.filledQuantity(), 8));
+		else
+			sb.append(StringUtils.leftPad("??", 8));
 		sb.append('/');
 		sb.append(StringUtils.rightPad("" + order.totalQuantity(), 8));
 		
-		sb.append(StringUtils.rightPad(orderState.status().toString(), 16));
+		if (extStatus == null)
+			sb.append(StringUtils.rightPad(orderState.status().toString(), 16));
+		else
+			sb.append(StringUtils.rightPad(extStatus, 16));
+
 		sb.append(StringUtils.rightPad("" + order.permId(), 12));
 		sb.append(StringUtils.rightPad("[" + order.orderId() + "]", 6));
-		// sb.append("NO-TIME");
+
+		if (extMsg != null) {
+			sb.append('\n');
+			sb.append(extMsg);
+		}
 		
 		if (order.action() == Action.BUY)
 			return green(sb.toString());
