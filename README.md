@@ -20,6 +20,29 @@ Version: API 9.76 Release Date: May 08 2019
 	- IBGateway:Contract:STK:SEHK:HKD-1137
 * Auto query all contract details in user portfolio at startup
 
+# Order Cache behaviour
+
+Start-up:
+Refresh all alive orders (complete snapshot), and history orders (may not contain those with 0 trade)
+Setup hashmap at:
+	Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}
+	Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}@{expiry}
+	Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol}@{expiry}@{multiplier}
+Redis hashmap internal structure:
+	{ t -> timestamp }
+	{ id -> order\_json }
+	{ client\_oid -> order\_json }
+Then, mark OMS cache running with value '1' at:
+	Redis/URANUS:{exchange}:{name}:OMS
+
+Work:
+Keep receiving updates from AllOrderHandler
+Broadcast order\_json string at channel:
+	Redis/URANUS:{exchange}:{name}:O\_channel
+
+Tear-down:
+mark OMS cache stopped by deleting every Redis/URANUS:{exchange}:{name}:OMS
+
 # Commands and reponses
 
 Command format: {"id":id, "cmd":command, params:{...}}
