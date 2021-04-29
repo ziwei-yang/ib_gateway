@@ -2,9 +2,16 @@ package com.avalok.ib.handler;
 
 import static com.bitex.util.DebugUtil.*;
 
+import redis.clients.jedis.Jedis;
+import com.bitex.util.Redis;
+
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.*;
+import java.util.function.Consumer;
+
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 
 import com.avalok.ib.IBContract;
 import com.avalok.ib.IBOrder;
@@ -40,27 +47,13 @@ import com.ib.controller.ApiController.ITradeReportHandler;
  * Tear-down:
  * mark OMS cache stopped by deleting every Redis/URANUS:{exchange}:{name}:OMS
  */
-class OrderCache {
-	private Map<Integer, IBOrder> _orderByPermId = new ConcurrentHashMap<>();
-	private Map<Integer, IBOrder> _orderById = new ConcurrentHashMap<>();
-	public OrderCache() {}
-	public OrderCache(IBOrder[] list) { recOrders(list); }
-	public void recOrders(IBOrder[] list) {
-		for (IBOrder o : list) recOrder(o);
-	}
-	public void recOrder(IBOrder o) {
-		_orderByPermId.put(o.permId(), o);
-		_orderById.put(o.permId(), o);
-	}
-	public IBOrder byId(int id) { return _orderById.get(id); }
-	public IBOrder byPermId(int permId) { return _orderByPermId.get(permId); }
-}
 
 public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandler,ITradeReportHandler {
-
 	private boolean _aliveOrderInit = false;
 	private boolean _deadOrderInit = false;
 	private boolean _omsInit = false;
+	private final String _twsName;
+	public AllOrderHandler(String twsname) { _twsName = twsname; }
 
 	private void initOMS() {
 		if (_omsInit) {
@@ -72,7 +65,44 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			return;
 		}
 		_omsInit = true;
-		info("Init OMS");
+		info("Init OMS now");
+		final Collection<IBOrder> orders1 = _deadOrders.orders();
+		final Collection<IBOrder> orders2 = _aliveOrders.orders();
+		Redis.exec(new Consumer<Jedis>() {
+			@Override
+			public void accept(Jedis t) {
+				int ct = 1;
+				for(IBOrder o : orders1) {
+					JSONObject j = o.toOMSJSON();
+					String jstr = JSON.toJSONString(j);
+					IBContract ibc = o.contract;
+					String hmap = "URANUS:"+ibc.exchange()+":"+_twsName+":O:"+ibc.pair();
+					log("--> OMS " + hmap + " / " + o.omsId());
+					t.hset(hmap, o.omsId(), jstr);
+					if (o.omsClientOID() != null) {
+						log("--> OMS " + hmap + " / " + o.omsClientOID());
+						t.hset(hmap, o.omsClientOID(), jstr);
+					}
+					ct += 1;
+				}
+				info("OMS init with " + ct + " dead orders");
+				ct = 0;
+				for(IBOrder o : orders2) {
+					JSONObject j = o.toOMSJSON();
+					String jstr = JSON.toJSONString(j);
+					IBContract ibc = o.contract;
+					String hmap = "URANUS:"+ibc.exchange()+":"+_twsName+":O:"+ibc.pair();
+					log("--> OMS " + hmap + " / " + o.omsId());
+					t.hset(hmap, o.omsId(), jstr);
+					if (o.omsClientOID() != null) {
+						log("--> OMS " + hmap + " / " + o.omsClientOID());
+						t.hset(hmap, o.omsClientOID(), jstr);
+					}
+					ct += 1;
+				}
+				info("OMS init with " + ct + " alive orders");
+			}
+		});
 	}
 
 	public void teardownOMS(String reason) {
@@ -206,4 +236,21 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		_aliveOrderInit = true;
 		if (!_omsInit && _deadOrderInit) initOMS();
 	}
+}
+
+class OrderCache {
+	private Map<Integer, IBOrder> _orderByPermId = new ConcurrentHashMap<>();
+	private Map<Integer, IBOrder> _orderById = new ConcurrentHashMap<>();
+	OrderCache() {}
+	OrderCache(IBOrder[] list) { recOrders(list); }
+	void recOrders(IBOrder[] list) {
+		for (IBOrder o : list) recOrder(o);
+	}
+	void recOrder(IBOrder o) {
+		_orderByPermId.put(o.permId(), o);
+		_orderById.put(o.permId(), o);
+	}
+	IBOrder byId(int id) { return _orderById.get(id); }
+	IBOrder byPermId(int permId) { return _orderByPermId.get(permId); }
+	Collection<IBOrder> orders() { return _orderByPermId.values(); }
 }

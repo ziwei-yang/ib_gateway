@@ -39,6 +39,15 @@ public class DebugUtil {
 		log(yellow(o));
 	}
 	
+	public static void errWithTrace(String msg) {
+		err(msg);
+		printStackInfo();
+	}
+	public static void systemAbort(String msg) {
+		err(msg);
+		printStackInfo(16);
+		System.exit(1);
+	}
 	public static void printStackTrace() {
 		printStackInfo();
 	}

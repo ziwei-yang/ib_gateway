@@ -12,26 +12,15 @@ import static com.bitex.util.DebugUtil.*;
  */
 public class IBContract extends Contract {
 	protected String _shownName = null;
+	protected String _pair = null;
 	protected boolean _fullDetailed = false;
 	public String shownName() { return _shownName; }
+	public String pair() { return _pair; }
 
 	public IBContract() { }
-	/**
-	 * Parse string like:
-	 * USD.HKD as FX TODO
-	 * currency-symbol as STK
-	 * currency-symbol@expiry as FUT
-	 * currency-symbol@expiry@multiplier as FUT
-	 * USD-TSLA
-	 * USD-BAKKT@20210625
-	 * USD-BAKKT@202106
-	 * USD-BRR@202106@5
-	 * USD-BRR@202106@0.1
-	 * HKD-1137
-	 */
 	public IBContract(String exchange, String shownName) throws Exception {
 		exchange(exchange.toUpperCase());
-		parseShortName(shownName);
+		parseName(shownName);
 		buildFullInfo();
 	}
 	
@@ -44,7 +33,7 @@ public class IBContract extends Contract {
 			if (_fullDetailed == false)
 				err("Could not find contract for:\n"+toJSON());
 		}
-		String s = exchange() + ":" + secType() + ":" + currency() + "-" + standard_symbol();
+		String s = currency() + "-" + symbol();
 		if (secType() == SecType.STK)
 			;
 		else if (secType() == SecType.FUT) {
@@ -62,12 +51,27 @@ public class IBContract extends Contract {
 			else
 				s = s + "@" + multiplier();
 		}
+		_pair= s;
+		s = exchange() + ":" + secType() + ":" + s;
 		_shownName = s;
 	}
 	
 	public boolean isFullDetailed() { return _fullDetailed; }
 	
-	private void parseShortName(String shortName) throws Exception {
+	/**
+	 * Parse string like:
+	 * USD.HKD as FX TODO
+	 * currency-symbol as STK
+	 * currency-symbol@expiry as FUT
+	 * currency-symbol@expiry@multiplier as FUT
+	 * USD-TSLA
+	 * USD-BAKKT@20210625
+	 * USD-BAKKT@202106
+	 * USD-BRR@202106@5
+	 * USD-BRR@202106@0.1
+	 * HKD-1137
+	 */
+	private void parseName(String shortName) throws Exception {
 		String[] segs = shortName.split("/");
 		exchange(segs[0]);
 		secType(SecType.valueOf(segs[1]));
@@ -88,19 +92,6 @@ public class IBContract extends Contract {
 			secType(SecType.FUT);
 		} else throw new Exception("Unknwon contract descrption " + shortName);
 		buildFullInfo();
-	}
-	
-	/**
-	 * Converted symbol used in URANUS system.
-	 */
-	public String standard_symbol() {
-		if (exchange() == null || symbol() == null)
-			return symbol();
-		if (exchange().equals("ICECRYPTO") && symbol().equals("BAKKT"))
-			return "BTC";
-		if (exchange().equals("CMECRYPTO") && symbol().equals("BRR"))
-			return "BTC";
-		return symbol();
 	}
 
 	public IBContract(JSONObject j) {

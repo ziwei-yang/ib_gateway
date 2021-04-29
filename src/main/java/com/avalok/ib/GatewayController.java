@@ -119,7 +119,7 @@ public class GatewayController extends BaseIBController {
 	////////////////////////////////////////////////////////////////
 	// Order & trades
 	////////////////////////////////////////////////////////////////
-	protected AllOrderHandler orderCacheHandler = new AllOrderHandler();
+	protected AllOrderHandler orderCacheHandler = new AllOrderHandler(_name);
 	protected void subscribeTradeReport() {
 		_apiController.reqExecutions(new ExecutionFilter(), orderCacheHandler);
 	}
