@@ -266,6 +266,8 @@ public abstract class BaseIBController implements IConnectionHandler {
 		}
 	}
 
+	// If lastAckErrorID+lastAckErrorCode+lastAckErrorMsg has been set by other handlers
+	// Unknown message will be suppressed.
 	public int lastAckErrorCode = 0, lastAckErrorID = 0;
 	public String lastAckErrorMsg = "";
 	@Override
@@ -345,7 +347,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 			case 2158: // Sec-def data farm connection is OK:secdefhk
 				break;
 			default:
-				if (lastAckErrorCode != errorCode || lastAckErrorMsg.equals(errorMsg) == false)
+				if (lastAckErrorID != id || lastAckErrorCode != errorCode || lastAckErrorMsg.equals(errorMsg) == false)
 					warn("Unhandled Message: id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 		}

@@ -15,6 +15,7 @@ import com.alibaba.fastjson.JSONObject;
 
 import com.avalok.ib.IBContract;
 import com.avalok.ib.IBOrder;
+import com.avalok.ib.controller.BaseIBController;
 import com.ib.client.CommissionReport;
 import com.ib.client.Contract;
 import com.ib.client.Execution;
@@ -52,8 +53,12 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	private boolean _aliveOrderInit = false;
 	private boolean _deadOrderInit = false;
 	private boolean _omsInit = false;
+	private final BaseIBController _ibController;
 	private final String _twsName;
-	public AllOrderHandler(String twsname) { _twsName = twsname; }
+	public AllOrderHandler(BaseIBController ibController) {
+		_ibController = ibController;
+		_twsName = ibController.name();
+	}
 
 	private void initOMS() {
 		if (_omsInit) {
@@ -184,7 +189,10 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		_aliveOrders.recOrder(_processingOrder);
 		_recvOpenOrders.add(_processingOrder);
 	}
-	
+
+	/**
+	 * All message would come here first, then sent to _ibController.message()
+	 */
 	@Override
 	public void handle(int orderId, int errorCode, String errorMsg) {
 		if (orderId == -1 || orderId == 0){
@@ -222,8 +230,15 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 				return;
 		}
 		// o includes errorMsg
-		info("<-- order msg for [" + orderId + "]," + errorCode + "\n" + o);
+		if (errorMsg.length() > 20)
+			info("<-- order msg for [" + orderId + "]," + errorCode + " " + errorMsg.substring(0, 19) + "...\n" + o);
+		else
+			info("<-- order msg for [" + orderId + "]," + errorCode + " " + errorMsg + "...\n" + o);
 		// info("<-- order msg for [" + orderId + "]," + errorCode + "," + errorMsg);
+		// Tell _ibController this message is processed.
+		_ibController.lastAckErrorID = orderId;
+		_ibController.lastAckErrorCode = errorCode;
+		_ibController.lastAckErrorMsg = errorMsg;
 	}
 
 	@Override
