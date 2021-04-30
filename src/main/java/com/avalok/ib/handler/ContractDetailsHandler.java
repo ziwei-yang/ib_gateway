@@ -49,8 +49,7 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 	public static JSONObject findDetails(IBContract ibc) {
 		if (ibc.isFullDetailed() == false)
 			fillIBContract(ibc);
-		String key = ibc.shownName();
-		if (key == null) key = ibc.toString();
+		String key = ibc.toString();
 		JSONObject ret = KNOWN_CONTRACT_DETAILS.get(key);
 		if (ret != null) return ret;
 		if (GW_CONTROLLER != null) queryDetails(ibc);
@@ -58,8 +57,7 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 	}
 
 	protected static void queryDetails(IBContract ibc) {
-		String key = ibc.shownName();
-		if (key == null) key = ibc.toString();
+		String key = ibc.toString();
 		Long lastQueryT = QUERY_HIS.get(key);
 		if (lastQueryT == null || lastQueryT + 10_000 < System.currentTimeMillis()) {
 			QUERY_HIS.put(key, System.currentTimeMillis());

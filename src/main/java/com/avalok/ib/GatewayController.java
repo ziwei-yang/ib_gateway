@@ -9,7 +9,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import com.alibaba.fastjson.JSON;
-import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.controller.BaseIBController;
 import com.avalok.ib.handler.*;
@@ -25,7 +24,7 @@ public class GatewayController extends BaseIBController {
 		new GatewayController().listenCommand();
 	}
 
-	private String ackChannel;
+	private final String ackChannel;
 	public GatewayController() {
 		ContractDetailsHandler.GW_CONTROLLER = this;
 		Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -38,14 +37,18 @@ public class GatewayController extends BaseIBController {
 		// If this status goes wrong, all other data could not be trusted.
 		long liveStatusInvertal = 1000;
 		final String liveStatusKey = "IBGateway:" + _name + ":status";
+		ackChannel = "IBGateway:"+_name+":ACK";
 		new Timer("GatewayControllerLiveStatusWriter").scheduleAtFixedRate(new TimerTask() {
 			@Override
 			public void run() {
-				String liveStatusData = "[" + isConnected() + "," + System.currentTimeMillis() + "]";
-				Redis.set(liveStatusKey, liveStatusData);
+				JSONObject j = new JSONObject();
+				j.put("type", "heartbeat");
+				j.put("status", isConnected());
+				j.put("t", System.currentTimeMillis());
+				Redis.set(liveStatusKey, j);
+				Redis.pub(ackChannel, j);
 			}
 		}, 0, liveStatusInvertal);
-		ackChannel = "IBGateway:"+_name+":ACK";
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -144,11 +147,16 @@ public class GatewayController extends BaseIBController {
 	////////////////////////////////////////////////////////////////
 	// Contract details query.
 	////////////////////////////////////////////////////////////////
-	public int queryContractList(IBContract contractWithLimitInfo) {
-		JSONObject details = ContractDetailsHandler.findDetails(contractWithLimitInfo);
-		if (details != null)
+	public int queryContractListWithCache(JSONObject contractWithLimitInfo) {
+		IBContract contract = new IBContract(contractWithLimitInfo);
+		// Query this in cache, would trigger reqContractDetails() if cache missed.
+		JSONObject details = ContractDetailsHandler.findDetails(contract);
+		if (details != null) // Cache hit.
 			return 0;
-		_apiController.reqContractDetails(contractWithLimitInfo, new ContractDetailsHandler());
+		return _apiController.lastReqId();
+	}
+	public int queryContractList(IBContract ibc) {
+		_apiController.reqContractDetails(ibc, new ContractDetailsHandler());
 		return _apiController.lastReqId();
 	}
 
@@ -200,7 +208,7 @@ public class GatewayController extends BaseIBController {
 					_postConnected();
 					break;
 				case "FIND_CONTRACTS":
-					apiReqId = queryContractList(new IBContract(j.getJSONObject("contract")));
+					apiReqId = queryContractListWithCache(j.getJSONObject("contract"));
 					break;
 				case "PLACE_ORDER":
 					apiReqId = placeOrder(new IBOrder(j.getJSONObject("iborder")));

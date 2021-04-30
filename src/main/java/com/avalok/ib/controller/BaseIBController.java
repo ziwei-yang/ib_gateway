@@ -202,10 +202,9 @@ public abstract class BaseIBController implements IConnectionHandler {
 			log("_markDisconnected() Remove and disconnect old APIController...");
 			IBApiController old_controller = _apiController;
 			_apiController = null;
-			old_controller.disconnect();
-		} catch (Exception e1) {
-		} finally {
 			_postDisconnected();
+			old_controller.disconnect(); // Dispose resource at last
+		} catch (Exception e1) {
 		}
 	}
 
