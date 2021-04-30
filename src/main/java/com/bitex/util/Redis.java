@@ -2,6 +2,8 @@ package com.bitex.util;
 
 import java.util.function.Consumer;
 
+import com.alibaba.fastjson.JSON;
+
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPool;
 import redis.clients.jedis.JedisPoolConfig;
@@ -40,5 +42,33 @@ public class Redis {
 			if (jedis != null)
 				jedis.close();
 		}
+	}
+
+	////////////////////////////////////////////////////////////////
+	// Jedis wrapper with pool.
+	////////////////////////////////////////////////////////////////
+
+	public static void pub(String channel, Object j) {
+		pub(channel, JSON.toJSONString(j));
+	}
+	public static void pub(String channel, String msg) {
+		exec(new Consumer<Jedis>() {
+			@Override
+			public void accept(Jedis t) {
+				t.publish(channel, msg);
+			}
+		});
+	}
+	
+	public static void set(String key, Object j) {
+		pub(key, JSON.toJSONString(j));
+	}
+	public static void set(String k, String v) {
+		exec(new Consumer<Jedis>() {
+			@Override
+			public void accept(Jedis t) {
+				t.set(k, v);
+			}
+		});
 	}
 }

@@ -50,69 +50,44 @@ import com.ib.controller.ApiController.ITradeReportHandler;
  */
 
 public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandler,ITradeReportHandler {
-	private boolean _aliveOrderInit = false;
-	private boolean _deadOrderInit = false;
-	private boolean _omsInit = false;
 	private final BaseIBController _ibController;
 	private final String _twsName;
 	public AllOrderHandler(BaseIBController ibController) {
 		_ibController = ibController;
 		_twsName = ibController.name();
 	}
-
-	private void initOMS() {
-		if (_omsInit) {
-			err("Should not call initOMS() when _omsInit is true");
-			return;
-		}
-		if (!_aliveOrderInit || !_deadOrderInit) {
-			err("Should not call initOMS() when _aliveOrderInit " + _aliveOrderInit + " _deadOrderInit " + _deadOrderInit);
-			return;
-		}
-		_omsInit = true;
-		info("Init OMS now");
-		final Collection<IBOrder> orders1 = _deadOrders.orders();
-		final Collection<IBOrder> orders2 = _aliveOrders.orders();
+	
+	public void writeOMS(IBOrder o) {
 		Redis.exec(new Consumer<Jedis>() {
 			@Override
-			public void accept(Jedis t) {
-				int ct = 1;
-				for(IBOrder o : orders1) {
-					JSONObject j = o.toOMSJSON();
-					String jstr = JSON.toJSONString(j);
-					IBContract ibc = o.contract;
-					String hmap = "URANUS:"+ibc.exchange()+":"+_twsName+":O:"+ibc.pair();
-					log("--> OMS " + hmap + " / " + o.omsId());
-					t.hset(hmap, o.omsId(), jstr);
-					if (o.omsClientOID() != null) {
-						log("--> OMS " + hmap + " / " + o.omsClientOID());
-						t.hset(hmap, o.omsClientOID(), jstr);
-					}
-					ct += 1;
-				}
-				info("OMS init with " + ct + " dead orders");
-				ct = 0;
-				for(IBOrder o : orders2) {
-					JSONObject j = o.toOMSJSON();
-					String jstr = JSON.toJSONString(j);
-					IBContract ibc = o.contract;
-					String hmap = "URANUS:"+ibc.exchange()+":"+_twsName+":O:"+ibc.pair();
-					log("--> OMS " + hmap + " / " + o.omsId());
-					t.hset(hmap, o.omsId(), jstr);
-					if (o.omsClientOID() != null) {
-						log("--> OMS " + hmap + " / " + o.omsClientOID());
-						t.hset(hmap, o.omsClientOID(), jstr);
-					}
-					ct += 1;
-				}
-				info("OMS init with " + ct + " alive orders");
-			}
+			public void accept(Jedis r) { writeOMS(r, o); }
 		});
+	}
+	
+	/**
+	 * Write to hset "URANUS:"+ibc.exchange()+":"+_twsName+":O:"+ibc.pair()
+	 * Also publish at channel "URANUS:"+ibc.exchange()+":"+_twsName+":O_channel"
+	 */
+	public void writeOMS(Jedis t, IBOrder o) {
+		JSONObject j = o.toOMSJSON();
+		String jstr = JSON.toJSONString(j);
+		IBContract ibc = o.contract;
+		String hmap = "URANUS:"+ibc.exchange()+":"+_twsName+":O:"+ibc.pair();
+		log(">>> OMS " + hmap + " / " + o.omsId());
+		t.hset(hmap, o.omsId(), jstr);
+		JSONObject pubJ = new JSONObject();
+		pubJ.put(""+o.omsId(), jstr);
+		if (o.omsClientOID() != null) {
+			log(">>> OMS " + hmap + " / " + o.omsClientOID());
+			t.hset(hmap, o.omsClientOID(), jstr);
+			pubJ.put(""+o.omsClientOID(), jstr);
+		}
+		t.publish("URANUS:"+ibc.exchange()+":"+_twsName+":O_channel", JSON.toJSONString(pubJ));
 	}
 
 	public void teardownOMS(String reason) {
 		err("Tear down OMS, reason " + reason);
-		sleep (1000);
+		sleep (300); // TODO
 		err("Tear down OMS finished");
 	}
 	
@@ -167,7 +142,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		IBOrder o = new IBOrder(contract, order, orderState);
 		// Order info is not full yet, need wait orderStatus() to print.
 		// log("<-- openOrder:\n" + o);
-		 log("<-- openOrder: " + o.permId());
+		log("<-- openOrder: " + o.permId());
 		_processingOrderId = o.orderId();
 		_processingOrder = o;
 		// Don't record this order now, not enough detail yet.
@@ -220,9 +195,13 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		switch(errorCode) {
 			case 201: // code:201, msg:Order rejected - reason:
 				o.setRejected(errorMsg);
+				_deadOrders.recOrder(o);
+				writeOMS(o);
 				break;
 			case 202: // code:202, msg:Order Canceled - reason:
 				o.setCancelled(errorMsg);
+				_deadOrders.recOrder(o);
+				writeOMS(o);
 				break;
 			default:
 				log(o);
@@ -250,6 +229,59 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		_recvOpenOrders.clear();
 		_aliveOrderInit = true;
 		if (!_omsInit && _deadOrderInit) initOMS();
+	}
+
+	////////////////////////////////////////////////////////////////
+	// initOMS, normally do this when TWS is connected or reconnected
+	////////////////////////////////////////////////////////////////
+	public void resetStatus() {
+		info("Reset AllOrderHandler status");
+		_omsInit = false;
+		_aliveOrderInit = false;
+		_deadOrderInit = false;
+		_recvOpenOrders.clear();
+		_aliveOrders = new OrderCache();
+		_recvCompletedOrder.clear();
+		_deadOrders = new OrderCache();
+	}
+	/**
+	 * Execute after _aliveOrderInit and _deadOrderInit becomes true.
+	 * _deadOrders and _aliveOrders only represents snapshot after receiving updates.
+	 * New placed/rejected order after snapshot might not be contained.
+	 */
+	private boolean _aliveOrderInit = false;
+	private boolean _deadOrderInit = false;
+	private boolean _omsInit = false;
+	private void initOMS() {
+		if (_omsInit) {
+			err("Should not call initOMS() when _omsInit is true");
+			return;
+		}
+		if (!_aliveOrderInit || !_deadOrderInit) {
+			err("Should not call initOMS() when _aliveOrderInit " + _aliveOrderInit + " _deadOrderInit " + _deadOrderInit);
+			return;
+		}
+		_omsInit = true;
+		info("Init OMS now");
+		final Collection<IBOrder> orders1 = _deadOrders.orders();
+		final Collection<IBOrder> orders2 = _aliveOrders.orders();
+		Redis.exec(new Consumer<Jedis>() {
+			@Override
+			public void accept(Jedis r) {
+				int ct = 1;
+				for(IBOrder o : orders1) {
+					writeOMS(r, o);
+					ct += 1;
+				}
+				info("OMS init with " + ct + " dead orders");
+				ct = 0;
+				for(IBOrder o : orders2) {
+					writeOMS(r, o);
+					ct += 1;
+				}
+				info("OMS init with " + ct + " alive orders");
+			}
+		});
 	}
 }
 

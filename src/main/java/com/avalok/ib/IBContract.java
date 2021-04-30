@@ -60,6 +60,8 @@ public class IBContract extends Contract {
 	
 	/**
 	 * Parse string like:
+	 * [EXCHANGE/STK/]CURRENCY-SYMBOL[@EXPIRY][@MUL]
+	 * 
 	 * USD.HKD as FX TODO
 	 * currency-symbol as STK
 	 * currency-symbol@expiry as FUT
@@ -70,12 +72,20 @@ public class IBContract extends Contract {
 	 * USD-BRR@202106@5
 	 * USD-BRR@202106@0.1
 	 * HKD-1137
+	 * 
+	 * 
 	 */
 	private void parseName(String shortName) throws Exception {
 		String[] segs = shortName.split("/");
-		exchange(segs[0]);
-		secType(SecType.valueOf(segs[1]));
-		String name = segs[2];
+		String name;
+		if (segs.length >= 3) {
+			exchange(segs[0]);
+			secType(SecType.valueOf(segs[1]));
+			name = segs[2];
+		} else {
+			secType(SecType.STK);
+			name = segs[0];
+		}
 		if (name.matches("^[A-Z]{3,5}-[A-Z0-9.]{1,8}$")) {
 			segs = name.split("-");
 			currency(segs[0]);

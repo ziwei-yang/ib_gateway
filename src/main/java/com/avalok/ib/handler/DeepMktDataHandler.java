@@ -57,6 +57,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 		bids.clear();
 		asks.clear();
 		odbkSnapshot.set(2, 0);
+		Redis.exec(broadcastLambda);
 	}
 
 	@Override
@@ -64,7 +65,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 		if (pos >= MAX_DEPTH) return;
 //		log("DeepType " + pos + " " + side + " " + operation + " " + price + " " + size);
 		if (_ct == 0)
-			log(_contract.shownName() + " first depth data, broadcast to " + (broadcastLambda == null ? "No" : publishChannel));
+			log(">>> broadcast depth " + publishChannel);
 		_ct += 1;
 		
 		double size = size_in_lot * multiplier;

@@ -9,6 +9,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.controller.BaseIBController;
 import com.avalok.ib.handler.*;
@@ -55,13 +56,8 @@ public class GatewayController extends BaseIBController {
 	// Market data module
 	////////////////////////////////////////////////////////////////
 	private ConcurrentHashMap<String, DeepMktDataHandler> _depthTasks = new ConcurrentHashMap<>();
-	private void subscribeMarketData(String exchange, String shownName) {
-		try {
-			subscribeMarketData(new IBContract(exchange, shownName));
-		} catch (Exception e) {
-			log("Failed to subscribeMarketData " + exchange + " " + shownName + "\n" + e.getMessage());
-			return;
-		}
+	private void subscribeMarketData(String exchange, String shownName) throws Exception {
+		subscribeMarketData(new IBContract(exchange, shownName));
 	}
 
 	private void subscribeMarketData(IBContract contract) {
@@ -117,7 +113,7 @@ public class GatewayController extends BaseIBController {
 	}
 	
 	////////////////////////////////////////////////////////////////
-	// Order & trades
+	// Order & trades updates.
 	////////////////////////////////////////////////////////////////
 	protected AllOrderHandler orderCacheHandler = new AllOrderHandler(this);
 	protected void subscribeTradeReport() {
@@ -130,6 +126,13 @@ public class GatewayController extends BaseIBController {
 	}
 	protected void refreshCompletedOrders() {
 		_apiController.reqCompletedOrders(orderCacheHandler);
+	}
+	
+	////////////////////////////////////////////////////////////////
+	// Order actions
+	////////////////////////////////////////////////////////////////
+	protected void placeOrder(IBOrder order) {
+		_apiController.placeOrModifyOrder(order.contract, order.order, new SingleOrderHandler(this, orderCacheHandler, order));
 	}
 	protected void cancelOrder(int orderId) {
 		_apiController.cancelOrder(orderId);
@@ -151,6 +154,11 @@ public class GatewayController extends BaseIBController {
 	@Override
 	protected void _postConnected() {
 		log("_postConnected");
+		// Reset every cache status.
+		// Contract detail cache does not need to be reset, always not changed.
+		orderCacheHandler.resetStatus();
+		
+		// Then subscribe data.
 		subscribeAccountMV();
 		refreshLiveOrders();
 		refreshCompletedOrders();
@@ -162,6 +170,7 @@ public class GatewayController extends BaseIBController {
 	protected void _postDisconnected() {
 		log("_postDisconnected");
 		orderCacheHandler.teardownOMS("_postDisconnected()");
+		orderCacheHandler.resetStatus();
 	}
 
 	private JedisPubSub commandProcessJedisPubSub = new JedisPubSub() {
@@ -175,7 +184,7 @@ public class GatewayController extends BaseIBController {
 				return;
 			}
 			final Integer id = j.getInteger("id");
-			boolean success = true;
+			String errorMsg = null;
 			try {
 				switch(j.getString("cmd")) {
 				case "SUB_ODBK":
@@ -187,23 +196,30 @@ public class GatewayController extends BaseIBController {
 				case "FIND_CONTRACTS":
 					queryContractList(new IBContract(j.getJSONObject("params")));
 					break;
+				case "PLACE_ORDER":
+					placeOrder(new IBOrder(j.getJSONObject("params")));
+					break;
+				case "CANCEL_ORDER":
+					cancelOrder(j.getInteger("apiOrderId"));
+					break;
+				case "CANCEL_ALL":
+					cancelAll();
+					break;
 				default:
-					success = false;
-					err("Unknown cmd " + j.getString("cmd"));
+					errorMsg = "Unknown cmd " + j.getString("cmd");
+					err(errorMsg);
 					break;
 				}
 			} catch (Exception e) {
-				success = false;
+				errorMsg = e.getMessage();
 				e.printStackTrace();
 			} finally { // Reply with id in boradcasting.
-				final boolean replySuccess = success;
-				Redis.exec(new Consumer<Jedis>() {
-					@Override
-					public void accept(Jedis t) {
-						String replyChannel = "IBGateway:"+_name+":ACK";
-						t.publish(replyChannel, "["+id+","+replySuccess+"]");
-					}
-				});
+				final JSONArray r = new JSONArray();
+				r.add(id);
+				r.add(errorMsg==null);
+				if (errorMsg != null)
+					r.add(errorMsg);
+				Redis.pub("IBGateway:"+_name+":ACK", r);
 			}
 		}
 	};

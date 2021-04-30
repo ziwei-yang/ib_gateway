@@ -4,7 +4,6 @@ import com.avalok.ib.handler.ContractDetailsHandler;
 import static com.bitex.util.DebugUtil.*;
 
 import org.apache.commons.lang3.StringUtils;
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 
 import com.ib.client.Contract;
@@ -15,13 +14,53 @@ import com.ib.client.Types.Action;
 
 public class IBOrder {
 	public IBContract contract;
-	protected Order order;
+	public Order order;
 	protected OrderState orderState;
+	boolean toBePlaced = false;
+	/**
+	 * Build new order to place
+	 */
+	public IBOrder(Contract _contract, Order _order) {
+		contract = new IBContract(_contract);
+		ContractDetailsHandler.findDetails(contract);
+		order = _order;
+		toBePlaced = true;
+	}
+	/**
+	 * Build new order to place,
+	 * Parse full contract from j['contract']
+	 * Parse URANUS format order from j['order']
+	 */
+	public IBOrder(JSONObject j) {
+		contract = new IBContract(j.getJSONObject("contract"));
+		ContractDetailsHandler.findDetails(contract);
+		JSONObject oj = j.getJSONObject("order");
+		order = new Order();
+		order.account(oj.getString("account"));
+		if (oj.getString("i") != null) // Only when modifying existed order.
+			order.permId(Integer.parseInt(oj.getString("i")));
+		order.action(oj.getString("T").toUpperCase()); // BUY SELL
+		order.totalQuantity(oj.getDoubleValue("s"));
+		order.lmtPrice(oj.getDoubleValue("p"));
+		order.filledQuantity(oj.getDoubleValue("executed"));
+		// Don't parse status, will get updates from IB after placing/modifying
+		order.orderType("LMT"); // Only place limit order
+		if (oj.getString("tif") != null) // Default: DAY
+			order.tif(oj.getString("tif"));
+		toBePlaced = true;
+	}
+	/**
+	 * Build known order
+	 */
 	public IBOrder(Contract _contract, Order _order, OrderState _orderState) {
 		contract = new IBContract(_contract);
 		ContractDetailsHandler.findDetails(contract);
 		order = _order;
 		orderState = _orderState;
+	}
+	
+	public void orderState(OrderState os) {
+		orderState = os;
 	}
 	
 	// Updated from AllOrderHandler.orderStatus();
@@ -35,6 +74,13 @@ public class IBOrder {
 			int _clientId, String _whyHeld, double _mktCapPrice) {
 		if(_orderId != order.orderId())
 			err("setStatus() orderId not coinsistent " + _orderId + "," + order.orderId());
+		setStatus(_status, _filled, _remaining, _avgFillPrice, _permId, _parentId, _lastFillPrice, _clientId, _whyHeld, _mktCapPrice);
+	}
+	public void setStatus(
+			OrderStatus _status, double _filled,
+			double _remaining, double _avgFillPrice,
+			int _permId, int _parentId, double _lastFillPrice,
+			int _clientId, String _whyHeld, double _mktCapPrice) {
 		if(_permId != order.permId())
 			err("setStatus() permId not coinsistent " + _permId + "," + order.permId());
 		if (order.totalQuantity() != _filled + _remaining)
@@ -131,6 +177,8 @@ public class IBOrder {
 		j.put("status", extStatus == null ? orderState.status().toString() : extStatus);
 		// j.put("t", 0); // created time missing, suggest using timestamp_rand for client_oid.
 		j.put("market", contract.exchange());
+		j.put("orderType", order.orderType()); // LMT
+		j.put("tif", order.tif()); // LMT
 		return j;
 	}
 	

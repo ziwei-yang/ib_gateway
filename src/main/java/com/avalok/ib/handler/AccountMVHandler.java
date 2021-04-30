@@ -1,6 +1,6 @@
 package com.avalok.ib.handler;
 
-import static com.bitex.util.DebugUtil.info;
+import static com.bitex.util.DebugUtil.*;
 
 import java.util.Map;
 import java.util.Set;
@@ -96,14 +96,8 @@ public class AccountMVHandler implements IAccountHandler {
 			final String key = "IBGateway:" + acc + ":balance";
 			Map<String, JSONObject> pos = _data.get(acc);
 			if (pos == null) continue;
-			final String posStr = JSON.toJSONString(pos);
-			Redis.exec(new Consumer<Jedis>() {
-				@Override
-				public void accept(Jedis t) {
-					info("<-- AccountMV write to redis " + key);
-					t.set(key, posStr);
-				}
-			});
+			log(">>> Redis " + key);
+			Redis.set(key, pos);
 		}
 	}
 

@@ -39,6 +39,8 @@ Refresh all alive orders (complete snapshot), and history orders (may not contai
 * Keep receiving updates from AllOrderHandler
 * Broadcast order\_json string at channel:
 	- Redis/URANUS:{exchange}:{name}:O\_channel
+* Also write order\_json at HSET:
+	- Redis/URANUS:{exchange}:{name}:O:{currency}-{symbol} with key {i} and {client_oid}
 
 ### Tear-down:
 mark OMS cache stopped by deleting every Redis/URANUS:{exchange}:{name}:OMS
@@ -50,9 +52,15 @@ Command format: {"id":id, "cmd":command, params:{...}}
 ib\_gateway listens command on channel Redis/IBGateway:{name}:CMD , ACK with id at channel Redis/IBGateway:{name}:ACK
 
 * SUB\_ODBK
-	- params=contract, subscribe order book.
+	- {exchange=, showName=}, subscribe order book.
 * RESET
 	- reset status as new connected, restart all tasks.
 * FIND\_CONTRACTS
 	- params=contract with limit info, query all possible results.
 	- secType and symbol is required in contract
+* PLACE\_ORDER
+	- params={contract:{full\_detail\_contract}, order:{}}
+* CANCEL\_ORDER
+	- {apiOrderId=}
+* CANCEL\_ALL
+	- No argument

@@ -125,11 +125,8 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
-		final String s = JSON.toJSONString(j);
-		Redis.exec(new Consumer<Jedis>() {
-			@Override
-			public void accept(Jedis t) { t.set(key, s); }
-		});
+		log(">>> Redis " + key);
+		Redis.set(key, j);
 		return j;
 	}
 }
