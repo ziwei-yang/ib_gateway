@@ -24,7 +24,8 @@ public class GatewayController extends BaseIBController {
 	public static void main(String[] args) throws Exception {
 		new GatewayController().listenCommand();
 	}
-	
+
+	private String ackChannel;
 	public GatewayController() {
 		ContractDetailsHandler.GW_CONTROLLER = this;
 		Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -44,6 +45,7 @@ public class GatewayController extends BaseIBController {
 				Redis.set(liveStatusKey, liveStatusData);
 			}
 		}, 0, liveStatusInvertal);
+		ackChannel = "IBGateway:"+_name+":ACK";
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -218,17 +220,14 @@ public class GatewayController extends BaseIBController {
 				errorMsg = e.getMessage();
 				e.printStackTrace();
 			} finally { // Reply with id in boradcasting.
-				final JSONArray r = new JSONArray();
-				r.add(id);
-				if (errorMsg == null) {
-					r.add(true);
-					r.add(apiReqId);
-				} else {
-					r.add(false);
-					r.add(errorMsg);
-				}
 				info(">>> ACK " + id + " apiId " + apiReqId);
-				Redis.pub("IBGateway:"+_name+":ACK", r);
+				JSONObject r = new JSONObject();
+				r.put("type", "ack");
+				r.put("reqId", id);
+				r.put("apiId", apiReqId);
+				if (errorMsg != null)
+					r.put("err", errorMsg);
+				Redis.pub(ackChannel, r);
 			}
 		}
 	};
@@ -277,5 +276,11 @@ public class GatewayController extends BaseIBController {
 			super.message(id, errorCode, errorMsg);
 			break;
 		}
+		JSONObject j = new JSONObject();
+		j.put("type", "msg");
+		j.put("reqId", id);
+		j.put("code", errorCode);
+		j.put("msg", errorMsg);
+		Redis.pub(ackChannel, j);
 	}
 }
