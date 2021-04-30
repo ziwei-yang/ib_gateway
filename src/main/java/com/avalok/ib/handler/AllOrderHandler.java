@@ -170,7 +170,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	 */
 	@Override
 	public void handle(int orderId, int errorCode, String errorMsg) {
-		if (orderId == -1 || orderId == 0){
+		if (orderId >= -1){
+			// 10000007 200,Invalid destination exchange specified
 			// id:-1, code:2158, msg:Sec-def data farm connection is OK:secdefhk
 			// id:-1, code:2106, msg:HMDS data farm connection is OK:hkhmds
 			// Believe BaseIBController could handle that.

@@ -6,17 +6,13 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.GatewayController;
 import com.avalok.ib.IBContract;
 import com.bitex.util.Redis;
 import com.ib.client.*;
 import com.ib.controller.ApiController.*;
-
-import redis.clients.jedis.Jedis;
 
 // Write STK and FUT info to redis:
 // IBGateway:Contract:FUT:CMECRYPTO:USD-BRR:20210625:5
@@ -31,7 +27,7 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 	public static GatewayController GW_CONTROLLER = null;
 	public static final Map<String, Long> QUERY_HIS = new ConcurrentHashMap<>();
 
-	public static void fillIBContract(IBContract ibc) {
+	public static boolean fillIBContract(IBContract ibc) {
 		Collection<IBContract> contracts = KNOWN_CONTRACTS.values();
 		IBContract result = null;
 		for (IBContract _ibc : contracts) {
@@ -44,25 +40,30 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		}
 		if (result != null) {
 			ibc.copyFrom(result);
-			return;
+			return true;
 		}
 		if (GW_CONTROLLER != null) queryDetails(ibc);
+		return false;
 	}
 
 	public static JSONObject findDetails(IBContract ibc) {
 		if (ibc.isFullDetailed() == false)
 			fillIBContract(ibc);
-		JSONObject ret = KNOWN_CONTRACT_DETAILS.get(ibc.shownName());
+		String key = ibc.shownName();
+		if (key == null) key = ibc.toString();
+		JSONObject ret = KNOWN_CONTRACT_DETAILS.get(key);
 		if (ret != null) return ret;
 		if (GW_CONTROLLER != null) queryDetails(ibc);
 		return null;
 	}
 
 	protected static void queryDetails(IBContract ibc) {
-		Long lastQueryT = QUERY_HIS.get(ibc.shownName());
+		String key = ibc.shownName();
+		if (key == null) key = ibc.toString();
+		Long lastQueryT = QUERY_HIS.get(key);
 		if (lastQueryT == null || lastQueryT + 10_000 < System.currentTimeMillis()) {
-			QUERY_HIS.put(ibc.shownName(), System.currentTimeMillis());
-			warn("--> Auto query contract details:" + ibc.shownName());
+			QUERY_HIS.put(key, System.currentTimeMillis());
+			warn("--> Auto query contract details:" + key);
 			GW_CONTROLLER.queryContractList(ibc);
 		}
 	}

@@ -30,7 +30,7 @@ public class ApiController implements EWrapper {
 	private ApiConnection m_client;
 	private final ILogger m_outLogger;
 	private final ILogger m_inLogger;
-	private int m_reqId;	// used for all requests except orders; designed not to conflict with m_orderId
+	public int m_reqId;	// used for all requests except orders; designed not to conflict with m_orderId
 	private int m_orderId;
 
 	private final IConnectionHandler m_connectionHandler;

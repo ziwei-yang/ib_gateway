@@ -5,16 +5,12 @@ import static com.bitex.util.DebugUtil.*;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.function.Consumer;
 
-import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.IBContract;
 import com.bitex.util.Redis;
 import com.ib.controller.Position;
 import com.ib.controller.ApiController.IAccountHandler;
-
-import redis.clients.jedis.Jedis;
 
 public class AccountMVHandler implements IAccountHandler {
 

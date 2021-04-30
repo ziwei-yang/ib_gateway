@@ -40,14 +40,8 @@ public class GatewayController extends BaseIBController {
 		new Timer("GatewayControllerLiveStatusWriter").scheduleAtFixedRate(new TimerTask() {
 			@Override
 			public void run() {
-				Redis.exec(new Consumer<Jedis>() {
-					@Override
-					public void accept(Jedis t) {
-						String liveStatusData = "[" + isConnected() + "," + System.currentTimeMillis() + "]";
-						// log("--> Write " + liveStatusKey + " " + liveStatusData);
-						t.set(liveStatusKey, liveStatusData);
-					}
-				});
+				String liveStatusData = "[" + isConnected() + "," + System.currentTimeMillis() + "]";
+				Redis.set(liveStatusKey, liveStatusData);
 			}
 		}, 0, liveStatusInvertal);
 	}
@@ -56,35 +50,36 @@ public class GatewayController extends BaseIBController {
 	// Market data module
 	////////////////////////////////////////////////////////////////
 	private ConcurrentHashMap<String, DeepMktDataHandler> _depthTasks = new ConcurrentHashMap<>();
-	private void subscribeMarketData(String exchange, String shownName) throws Exception {
-		subscribeMarketData(new IBContract(exchange, shownName));
-	}
 
-	private void subscribeMarketData(IBContract contract) {
+	private int subscribeMarketData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
 		if (_depthTasks.get(jobKey) != null) {
 			err("Task dulicated, abort subscribing depth data for " + jobKey);
-			return;
+			return 0;
 		}
 		log("Subscribe depth data for " + jobKey);
 		int numOfRows = 10;
 		boolean isSmartDepth = false;
 		DeepMktDataHandler handler = new DeepMktDataHandler(contract, true);
 		_apiController.reqDeepMktData(contract, numOfRows, isSmartDepth, handler);
+		int qid = _apiController.lastReqId();
 		_depthTasks.put(jobKey, handler);
+		return qid;
 	}
 
-	private void unsubscribeMarketData(IBContract contract) {
+	private int unsubscribeMarketData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
 		DeepMktDataHandler handler = _depthTasks.get(jobKey);
 		if (handler == null) {
 			err("Task not exist, abort unsubscribing depth data for " + jobKey);
-			return;
+			return 0;
 		}
 		log("Unsubscribe depth data for " + jobKey);
 		boolean isSmartDepth = false;
 		_apiController.cancelDeepMktData(isSmartDepth, null);
+		int qid = _apiController.lastReqId();
 		_depthTasks.remove(jobKey);
+		return qid;
 	}
 	
 	private void restartMarketData() {
@@ -131,21 +126,28 @@ public class GatewayController extends BaseIBController {
 	////////////////////////////////////////////////////////////////
 	// Order actions
 	////////////////////////////////////////////////////////////////
-	protected void placeOrder(IBOrder order) {
+	protected int placeOrder(IBOrder order) {
 		_apiController.placeOrModifyOrder(order.contract, order.order, new SingleOrderHandler(this, orderCacheHandler, order));
+		return _apiController.lastReqId();
 	}
-	protected void cancelOrder(int orderId) {
+	protected int cancelOrder(int orderId) {
 		_apiController.cancelOrder(orderId);
+		return _apiController.lastReqId();
 	}
-	protected void cancelAll() {
+	protected int cancelAll() {
 		_apiController.cancelAllOrders();
+		return _apiController.lastReqId();
 	}
 	
 	////////////////////////////////////////////////////////////////
 	// Contract details query.
 	////////////////////////////////////////////////////////////////
-	public void queryContractList(IBContract contractWithLimitInfo) {
+	public int queryContractList(IBContract contractWithLimitInfo) {
+		JSONObject details = ContractDetailsHandler.findDetails(contractWithLimitInfo);
+		if (details != null)
+			return 0;
 		_apiController.reqContractDetails(contractWithLimitInfo, new ContractDetailsHandler());
+		return _apiController.lastReqId();
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -175,35 +177,37 @@ public class GatewayController extends BaseIBController {
 
 	private JedisPubSub commandProcessJedisPubSub = new JedisPubSub() {
 		public void onMessage(String channel, String message) {
-			info("<-- " + message);
 			JSONObject j = null;
 			try {
 				j = JSON.parseObject(message);
 			} catch (Exception e) {
+				err("<<< CMD " + message);
 				err("Failed to parse command " + e.getMessage());
 				return;
 			}
 			final Integer id = j.getInteger("id");
+			info("<<< CMD " + id + " " + j.getString("cmd"));
 			String errorMsg = null;
+			int apiReqId = 0;
 			try {
 				switch(j.getString("cmd")) {
 				case "SUB_ODBK":
-					subscribeMarketData(j.getString("exchange"), j.getString("shownName"));
+					apiReqId = subscribeMarketData(new IBContract(j.getJSONObject("contract")));
 					break;
 				case "RESET":
 					_postConnected();
 					break;
 				case "FIND_CONTRACTS":
-					queryContractList(new IBContract(j.getJSONObject("params")));
+					apiReqId = queryContractList(new IBContract(j.getJSONObject("contract")));
 					break;
 				case "PLACE_ORDER":
-					placeOrder(new IBOrder(j.getJSONObject("params")));
+					apiReqId = placeOrder(new IBOrder(j.getJSONObject("iborder")));
 					break;
 				case "CANCEL_ORDER":
-					cancelOrder(j.getInteger("apiOrderId"));
+					apiReqId = cancelOrder(j.getInteger("apiOrderId"));
 					break;
 				case "CANCEL_ALL":
-					cancelAll();
+					apiReqId = cancelAll();
 					break;
 				default:
 					errorMsg = "Unknown cmd " + j.getString("cmd");
@@ -216,9 +220,14 @@ public class GatewayController extends BaseIBController {
 			} finally { // Reply with id in boradcasting.
 				final JSONArray r = new JSONArray();
 				r.add(id);
-				r.add(errorMsg==null);
-				if (errorMsg != null)
+				if (errorMsg == null) {
+					r.add(true);
+					r.add(apiReqId);
+				} else {
+					r.add(false);
 					r.add(errorMsg);
+				}
+				info(">>> ACK " + id + " apiId " + apiReqId);
 				Redis.pub("IBGateway:"+_name+":ACK", r);
 			}
 		}
@@ -246,25 +255,27 @@ public class GatewayController extends BaseIBController {
 	public void message(int id, int errorCode, String errorMsg) {
 		log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 		switch (errorCode) {
-			case 317: // Market depth data has been RESET. Please empty deep book contents before applying any new entries.
-				log("Initialise all data jobs again.");
-				_postConnected();
-				break;
-			case 2103: // Market data farm connection is broken
-				log("Initialise all data jobs again.");
-				_postConnected();
-				break;
-			case 2105: // HMDS data farm connection is broken
-				log("Initialise all data jobs again.");
-				_postConnected();
-				break;
-			case 2108: // Market data farm connection is inactive but should be available upon demand
-				log("Initialise all data jobs again.");
-				_postConnected();
-				break;
-			default:
-				super.message(id, errorCode, errorMsg);
-				break;
+		case 200: // No security definition has been found for the request
+			break;
+		case 317: // Market depth data has been RESET. Please empty deep book contents before applying any new entries.
+			log("Initialise all data jobs again.");
+			_postConnected();
+			break;
+		case 2103: // Market data farm connection is broken
+			log("Initialise all data jobs again.");
+			_postConnected();
+			break;
+		case 2105: // HMDS data farm connection is broken
+			log("Initialise all data jobs again.");
+			_postConnected();
+			break;
+		case 2108: // Market data farm connection is inactive but should be available upon demand
+			log("Initialise all data jobs again.");
+			_postConnected();
+			break;
+		default:
+			super.message(id, errorCode, errorMsg);
+			break;
 		}
 	}
 }

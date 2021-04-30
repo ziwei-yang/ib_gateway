@@ -12,13 +12,19 @@ import static com.bitex.util.DebugUtil.*;
  */
 public class IBContract extends Contract {
 	protected String _shownName = null;
+	protected String _parsedName = null;
 	protected String _pair = null;
 	protected boolean _fullDetailed = false;
-	public String shownName() { return _shownName; }
+	public String shownName() {
+		if (_shownName != null)
+			return _shownName;
+		return _parsedName;
+	}
 	public String pair() { return _pair; }
 
 	public IBContract() { }
 	public IBContract(String exchange, String shownName) throws Exception {
+		_parsedName = "from:"+exchange+" "+shownName;
 		exchange(exchange.toUpperCase());
 		parseName(shownName);
 		buildFullInfo();

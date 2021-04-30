@@ -3,7 +3,6 @@ package com.avalok.ib.controller;
 import java.util.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
-import com.ib.controller.*;
 import com.ib.controller.ApiController.*;
 
 import com.alibaba.fastjson.*;
@@ -201,7 +200,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 			return;
 		try {
 			log("_markDisconnected() Remove and disconnect old APIController...");
-			ApiController old_controller = _apiController;
+			IBApiController old_controller = _apiController;
 			_apiController = null;
 			old_controller.disconnect();
 		} catch (Exception e1) {
@@ -276,14 +275,6 @@ public abstract class BaseIBController implements IConnectionHandler {
 		switch (errorCode) {
 			case 200: // No security definition has been found for the request
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
-				StringBuilder sb = new StringBuilder();
-				String[] his = _apiController.lastOperationHistory();
-				for (String s : his) {
-					if (s == null) continue;
-					sb.append(s);
-					sb.append('\n');
-				}
-				log("Request failed, id:" + id + ", code:" + errorCode + ", msg:" + errorMsg + "\nLast api operation:\n" + sb.toString());
 				break;
 			case 502: // Couldn't connect to TWS. Confirm that API is enabled in TWS via the Configure>API menu command.
 				// TWS gateway might be down, retry in longer time.

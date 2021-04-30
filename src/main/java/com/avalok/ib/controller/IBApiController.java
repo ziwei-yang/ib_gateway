@@ -8,13 +8,28 @@ import com.avalok.ib.IBContract;
 import com.ib.client.*;
 import com.ib.controller.*;
 import com.ib.controller.ApiConnection.*;
+import com.ib.controller.ApiController.IAccountHandler;
+import com.ib.controller.ApiController.ICompletedOrdersHandler;
+import com.ib.controller.ApiController.IConnectionHandler;
+import com.ib.controller.ApiController.IContractDetailsHandler;
+import com.ib.controller.ApiController.IDeepMktDataHandler;
+import com.ib.controller.ApiController.IHistoricalDataHandler;
+import com.ib.controller.ApiController.ILiveOrderHandler;
+import com.ib.controller.ApiController.IOrderHandler;
+import com.ib.controller.ApiController.IPositionHandler;
+import com.ib.controller.ApiController.IRealTimeBarHandler;
+import com.ib.controller.ApiController.ITradeReportHandler;
 
 /**
  * A warpper of ApiController for rate control and other proxy.
  */
-public class IBApiController extends ApiController {
+public class IBApiController {
+	private ApiController _api;
 	public IBApiController(IConnectionHandler handler, ILogger inLogger, ILogger outLogger) {
-		super(handler, inLogger, outLogger);
+		_api = new ApiController(handler, inLogger, outLogger);
+	}
+	public int lastReqId() {
+		return _api.m_reqId - 1;
 	}
 
 	////////////////////////////////////////////////////////////////
@@ -61,84 +76,108 @@ public class IBApiController extends ApiController {
 	////////////////////////////////////////////////////////////////
 	// Overwrite original API methods.
 	////////////////////////////////////////////////////////////////
+	public void connect( String host, int port, int clientId, String connectionOpts ) {
+		recordOperationHistory("connect");
+		_api.connect(host, port, clientId, connectionOpts);
+	}
+	public void disconnect() {
+		recordOperationHistory("disconnect");
+		_api.disconnect();
+	}
+	
 	public void reqAccountUpdates(boolean subscribe, String acctCode, IAccountHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqAccountUpdates:" + acctCode);
-		super.reqAccountUpdates(subscribe, acctCode, handler);
+		_api.reqAccountUpdates(subscribe, acctCode, handler);
 	}
 	public void reqPositions(IPositionHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqPositions");
-		super.reqPositions(handler);
+		_api.reqPositions(handler);
 	}
 	public void cancelPositions(IPositionHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("cancelPositions");
-		super.cancelPositions(handler);
-	}
-//	public void reqTopMktData(NewContract contract, String genericTickList, boolean snapshot, ITopMktDataHandler handler) {
-//		twsAPIRateControl();
-//		recordOperationHistory("reqTopMktData:" + JSON.toJSONString(contract));
-//		super.reqTopMktData(contract, genericTickList, snapshot, handler);
-//	}
-	public void cancelTopMktData(ITopMktDataHandler handler) {
-		twsAPIRateControl();
-		recordOperationHistory("cancelTopMktData");
-		super.cancelTopMktData(handler);
+		_api.cancelPositions(handler);
 	}
 	public void reqDeepMktData(IBContract contract, int numRows, boolean isSmartDepth, IDeepMktDataHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqDeepMktData:" + contract.shownName());
-		super.reqDeepMktData(contract, numRows, isSmartDepth, handler);
+		_api.reqDeepMktData(contract, numRows, isSmartDepth, handler);
 	}
 	public void cancelDeepMktData(boolean isSmartDepth, IDeepMktDataHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("cancelDeepMktData");
-		super.cancelDeepMktData(isSmartDepth, handler);
+		_api.cancelDeepMktData(isSmartDepth, handler);
 	}
 	public void reqExecutions(ExecutionFilter filter, ITradeReportHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqExecutions");
-		super.reqExecutions(filter, handler);
+		_api.reqExecutions(filter, handler);
 	}
 	public void reqLiveOrders(ILiveOrderHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqLiveOrders");
-		super.reqLiveOrders(handler);
+		_api.reqLiveOrders(handler);
 	}
 	public void takeTwsOrders(ILiveOrderHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("takeTwsOrders");
-		super.takeTwsOrders(handler);
+		_api.takeTwsOrders(handler);
 	}
 	public void takeFutureTwsOrders(ILiveOrderHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("takeFutureTwsOrders");
-		super.takeFutureTwsOrders(handler);
+		_api.takeFutureTwsOrders(handler);
 	}
 	public void removeLiveOrderHandler(ILiveOrderHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("removeLiveOrderHandler");
-		super.removeLiveOrderHandler(handler);
+		_api.removeLiveOrderHandler(handler);
 	}
 //	public void reqHistoricalData(NewContract contract, String endDateTime, int duration, DurationUnit durationUnit, BarSize barSize, WhatToShow whatToShow, boolean rthOnly, IHistoricalDataHandler handler) {
 //		twsAPIRateControl();
 //		recordOperationHistory("reqHistoricalData:" + JSON.toJSONString(contract));
-//		super.reqHistoricalData(contract, endDateTime, duration, durationUnit, barSize, whatToShow, rthOnly, handler);
+//		_api.reqHistoricalData(contract, endDateTime, duration, durationUnit, barSize, whatToShow, rthOnly, handler);
 //	}
 	public void cancelHistoricalData(IHistoricalDataHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("cancelHistoricalData");
-		super.cancelHistoricalData(handler);
+		_api.cancelHistoricalData(handler);
 	}
 //	public void reqRealTimeBars(NewContract contract, WhatToShow whatToShow, boolean rthOnly, IRealTimeBarHandler handler) {
 //		twsAPIRateControl();
 //		recordOperationHistory("reqRealTimeBars:" + JSON.toJSONString(contract));
-//		super.reqRealTimeBars(contract, whatToShow, rthOnly, handler);
+//		_api.reqRealTimeBars(contract, whatToShow, rthOnly, handler);
 //	}
 	public void cancelRealtimeBars(IRealTimeBarHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("cancelRealtimeBars");
-		super.cancelRealtimeBars(handler);
+		_api.cancelRealtimeBars(handler);
+	}
+    public void reqCompletedOrders(ICompletedOrdersHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("reqCompletedOrders");
+		_api.reqCompletedOrders(handler);
+    }
+    public void placeOrModifyOrder(Contract contract, final Order order, final IOrderHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("placeOrModifyOrder");
+		_api.placeOrModifyOrder(contract, order, handler);
+    }
+    public void cancelOrder(int orderId) {
+		twsAPIRateControl();
+		recordOperationHistory("cancelOrder");
+		_api.cancelOrder(orderId);
+    }
+	public void cancelAllOrders() {
+		twsAPIRateControl();
+		recordOperationHistory("cancelAllOrders");
+		_api.cancelAllOrders();
+	}
+	public void reqContractDetails( Contract contract, final IContractDetailsHandler processor) {
+		twsAPIRateControl();
+		recordOperationHistory("reqContractDetails");
+		_api.reqContractDetails(contract, processor);
 	}
 }
