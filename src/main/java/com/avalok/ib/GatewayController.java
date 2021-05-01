@@ -13,6 +13,7 @@ import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.controller.BaseIBController;
 import com.avalok.ib.handler.*;
 import com.bitex.util.Redis;
+import java.util.function.Consumer;
 
 import com.ib.client.*;
 
@@ -21,6 +22,8 @@ import redis.clients.jedis.JedisPubSub;
 
 public class GatewayController extends BaseIBController {
 	public static void main(String[] args) throws Exception {
+		if (Redis.connectivityTest() == false)
+			systemAbort("Seems redis does not work properlly");
 		new GatewayController().listenCommand();
 	}
 

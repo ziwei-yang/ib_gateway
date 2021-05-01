@@ -44,6 +44,15 @@ public class Redis {
 		}
 	}
 
+	public static boolean connectivityTest() {
+		try {
+			POOL.getResource();
+			return true;
+		} catch (Exception e) {
+			return false;
+		}
+	}
+
 	////////////////////////////////////////////////////////////////
 	// Jedis wrapper with pool.
 	////////////////////////////////////////////////////////////////
