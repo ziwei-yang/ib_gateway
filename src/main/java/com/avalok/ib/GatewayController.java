@@ -289,7 +289,7 @@ public class GatewayController extends BaseIBController {
 		}
 		JSONObject j = new JSONObject();
 		j.put("type", "msg");
-		j.put("reqId", id);
+		j.put("apiId", id);
 		j.put("code", errorCode);
 		j.put("msg", errorMsg);
 		Redis.pub(ackChannel, j);

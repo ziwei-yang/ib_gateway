@@ -37,7 +37,7 @@ public class IBContract extends Contract {
 		if (_fullDetailed == false) {
 			ContractDetailsHandler.fillIBContract(this);
 			if (_fullDetailed == false)
-				err("Could not find contract for:\n"+toJSON());
+				warn("Could not find contract details in cache:\n"+toJSON());
 		}
 		String s = currency() + "-" + symbol();
 		if (secType() == SecType.STK)

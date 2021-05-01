@@ -176,7 +176,6 @@ public class IBApiController {
 		_api.cancelAllOrders();
 	}
 	public void reqContractDetails( Contract contract, final IContractDetailsHandler processor) {
-		printStackInfo();
 		twsAPIRateControl();
 		recordOperationHistory("reqContractDetails");
 		_api.reqContractDetails(contract, processor);
