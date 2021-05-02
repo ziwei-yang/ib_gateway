@@ -62,7 +62,7 @@ public class GatewayController extends BaseIBController {
 	private int subscribeMarketData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
 		if (_depthTasks.get(jobKey) != null) {
-			err("Task dulicated, abort subscribing depth data for " + jobKey);
+			err("Task dulicated, extending subscribing depth data " + jobKey);
 			return 0;
 		}
 		log("Subscribe depth data for " + jobKey);
@@ -75,26 +75,20 @@ public class GatewayController extends BaseIBController {
 		return qid;
 	}
 
-	private int unsubscribeMarketData(IBContract contract) {
-		String jobKey = contract.exchange() + "/" + contract.shownName();
-		DeepMktDataHandler handler = _depthTasks.get(jobKey);
-		if (handler == null) {
-			err("Task not exist, abort unsubscribing depth data for " + jobKey);
-			return 0;
-		}
-		log("Unsubscribe depth data for " + jobKey);
+	private int unsubscribeMarketData() {
+		log("Unsubscribe all depth data");
 		boolean isSmartDepth = false;
 		_apiController.cancelDeepMktData(isSmartDepth, null);
 		int qid = _apiController.lastReqId();
-		_depthTasks.remove(jobKey);
+		_depthTasks.clear();
 		return qid;
 	}
 	
 	private void restartMarketData() {
 		info("Re-subscribe all odbk data");
 		Collection<DeepMktDataHandler> handlers = _depthTasks.values();
+		unsubscribeMarketData();
 		for (DeepMktDataHandler h : handlers) {
-			unsubscribeMarketData(h.contract());
 			subscribeMarketData(h.contract());
 		}
 	}
@@ -198,7 +192,7 @@ public class GatewayController extends BaseIBController {
 				err("Failed to parse command " + e.getMessage());
 				return;
 			}
-			final Integer id = j.getInteger("id");
+			final Long id = j.getLong("id");
 			info("<<< CMD " + id + " " + j.getString("cmd"));
 			String errorMsg = null;
 			int apiReqId = 0;

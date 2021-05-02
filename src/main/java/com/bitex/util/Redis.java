@@ -1,5 +1,7 @@
 package com.bitex.util;
 
+import static com.bitex.util.DebugUtil.*;
+
 import java.util.function.Consumer;
 
 import com.alibaba.fastjson.JSON;
@@ -70,7 +72,7 @@ public class Redis {
 	}
 	
 	public static void set(String key, Object j) {
-		pub(key, JSON.toJSONString(j));
+		set(key, JSON.toJSONString(j));
 	}
 	public static void set(String k, String v) {
 		exec(new Consumer<Jedis>() {

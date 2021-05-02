@@ -34,8 +34,10 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			if (ibc.matchFullDetails(_ibc)) {
 				if (result == null)
 					result = _ibc;
-				else
+				else if (ibc.shownName() == null)
 					warn("Multiple results matches:" + ibc.shownName());
+				else
+					warn("Multiple results matches:" + ibc);
 			}
 		}
 		if (result != null) {
