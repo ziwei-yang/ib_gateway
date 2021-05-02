@@ -37,7 +37,7 @@ public class IBApiController {
 	////////////////////////////////////////////////////////////////
 	protected final ConcurrentLinkedQueue<String> _opRecs = new ConcurrentLinkedQueue<>();
 	protected static final int OPERATION_HISTORY_MAX = 5;
-	
+
 	protected void recordOperationHistory(String his) {
 		info("--> " + his);
 		_opRecs.add(his);
@@ -55,7 +55,7 @@ public class IBApiController {
 	////////////////////////////////////////////////////////////////
 	protected static final int MAX_IB_API_RATE = 48; // TODO Where is limitation explanation?
 	protected final ConcurrentLinkedQueue<Long> _apiRecs = new ConcurrentLinkedQueue<>();
-	
+
 	protected void twsAPIRateControl() {
 		synchronized(_apiRecs) {
 			if (_apiRecs.size() >= MAX_IB_API_RATE) {
@@ -84,7 +84,7 @@ public class IBApiController {
 		recordOperationHistory("disconnect");
 		_api.disconnect();
 	}
-	
+
 	public void reqAccountUpdates(boolean subscribe, String acctCode, IAccountHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqAccountUpdates:" + acctCode);
@@ -155,21 +155,21 @@ public class IBApiController {
 		recordOperationHistory("cancelRealtimeBars");
 		_api.cancelRealtimeBars(handler);
 	}
-    public void reqCompletedOrders(ICompletedOrdersHandler handler) {
+	public void reqCompletedOrders(ICompletedOrdersHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqCompletedOrders");
 		_api.reqCompletedOrders(handler);
-    }
-    public void placeOrModifyOrder(Contract contract, final Order order, final IOrderHandler handler) {
+	}
+	public void placeOrModifyOrder(Contract contract, final Order order, final IOrderHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("placeOrModifyOrder");
 		_api.placeOrModifyOrder(contract, order, handler);
-    }
-    public void cancelOrder(int orderId) {
+	}
+	public void cancelOrder(int orderId) {
 		twsAPIRateControl();
 		recordOperationHistory("cancelOrder");
 		_api.cancelOrder(orderId);
-    }
+	}
 	public void cancelAllOrders() {
 		twsAPIRateControl();
 		recordOperationHistory("cancelAllOrders");

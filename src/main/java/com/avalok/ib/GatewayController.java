@@ -55,19 +55,20 @@ public class GatewayController extends BaseIBController {
 	}
 
 	////////////////////////////////////////////////////////////////
-	// Market data module
+	// Market depth data module, ridiculous limitation here:
+	// Max number (3) of market depth requests has been reached
 	////////////////////////////////////////////////////////////////
 	private ConcurrentHashMap<String, DeepMktDataHandler> _depthTasks = new ConcurrentHashMap<>();
+	private final boolean isSmartDepth = false;
 
 	private int subscribeMarketData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
 		if (_depthTasks.get(jobKey) != null) {
-			err("Task dulicated, extending subscribing depth data " + jobKey);
+			err("Task dulicated, skip subscribing depth data " + jobKey);
 			return 0;
 		}
 		log("Subscribe depth data for " + jobKey);
 		int numOfRows = 10;
-		boolean isSmartDepth = false;
 		DeepMktDataHandler handler = new DeepMktDataHandler(contract, true);
 		_apiController.reqDeepMktData(contract, numOfRows, isSmartDepth, handler);
 		int qid = _apiController.lastReqId();
@@ -75,20 +76,25 @@ public class GatewayController extends BaseIBController {
 		return qid;
 	}
 
-	private int unsubscribeMarketData() {
-		log("Unsubscribe all depth data");
-		boolean isSmartDepth = false;
-		_apiController.cancelDeepMktData(isSmartDepth, null);
+	private int unsubscribeMarketData(IBContract contract) {
+		String jobKey = contract.exchange() + "/" + contract.shownName();
+		DeepMktDataHandler handler = _depthTasks.get(jobKey);
+		if (_depthTasks.get(jobKey) == null) {
+			err("Task not exist, skip canceling depth data " + jobKey);
+			return 0;
+		}
+		log("Cancel depth data for " + jobKey);
+		_apiController.cancelDeepMktData(isSmartDepth, handler);
 		int qid = _apiController.lastReqId();
-		_depthTasks.clear();
+		_depthTasks.remove(jobKey);
 		return qid;
 	}
 	
 	private void restartMarketData() {
 		info("Re-subscribe all odbk data");
 		Collection<DeepMktDataHandler> handlers = _depthTasks.values();
-		unsubscribeMarketData();
 		for (DeepMktDataHandler h : handlers) {
+			unsubscribeMarketData(h.contract());
 			subscribeMarketData(h.contract());
 		}
 	}
