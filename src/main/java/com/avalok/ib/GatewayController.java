@@ -59,6 +59,7 @@ public class GatewayController extends BaseIBController {
 	// Max number (3) of market depth requests has been reached
 	////////////////////////////////////////////////////////////////
 	private ConcurrentHashMap<String, DeepMktDataHandler> _depthTasks = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Integer, String> _depthTaskByReqID = new ConcurrentHashMap<>();
 	private final boolean isSmartDepth = false;
 
 	private int subscribeMarketData(IBContract contract) {
@@ -72,6 +73,7 @@ public class GatewayController extends BaseIBController {
 		DeepMktDataHandler handler = new DeepMktDataHandler(contract, true);
 		_apiController.reqDeepMktData(contract, numOfRows, isSmartDepth, handler);
 		int qid = _apiController.lastReqId();
+		_depthTaskByReqID.put(qid, jobKey); // reference for error msg
 		_depthTasks.put(jobKey, handler);
 		return qid;
 	}
@@ -231,11 +233,11 @@ public class GatewayController extends BaseIBController {
 				errorMsg = e.getMessage();
 				e.printStackTrace();
 			} finally { // Reply with id in boradcasting.
-				info(">>> ACK " + id + " apiId " + apiReqId);
+				info(">>> ACK " + id + " ibApiId " + apiReqId);
 				JSONObject r = new JSONObject();
 				r.put("type", "ack");
 				r.put("reqId", id);
-				r.put("apiId", apiReqId);
+				r.put("ibApiId", apiReqId);
 				if (errorMsg != null)
 					r.put("err", errorMsg);
 				Redis.pub(ackChannel, r);
@@ -264,8 +266,21 @@ public class GatewayController extends BaseIBController {
 	@Override
 	public void message(int id, int errorCode, String errorMsg) {
 		log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
+		JSONObject j = new JSONObject();
 		switch (errorCode) {
 		case 200: // No security definition has been found for the request
+			break;
+		case 309: // Max number (3) of market depth requests has been reached
+			String depthJobKey = _depthTaskByReqID.remove(id);
+			if (depthJobKey != null) {
+				err("Remove failed depth task " + depthJobKey);
+				_depthTasks.remove(depthJobKey);
+				j.put("type", "error");
+				j.put("ibApiId", id);
+				j.put("code", errorCode);
+				j.put("msg", "depth req failed " + depthJobKey);
+				Redis.pub(ackChannel, j);
+			}
 			break;
 		case 317: // Market depth data has been RESET. Please empty deep book contents before applying any new entries.
 			log("Initialise all data jobs again.");
@@ -285,13 +300,12 @@ public class GatewayController extends BaseIBController {
 			break;
 		default:
 			super.message(id, errorCode, errorMsg);
+			j.put("type", "msg");
+			j.put("ibApiId", id);
+			j.put("code", errorCode);
+			j.put("msg", errorMsg);
+			Redis.pub(ackChannel, j);
 			break;
 		}
-		JSONObject j = new JSONObject();
-		j.put("type", "msg");
-		j.put("apiId", id);
-		j.put("code", errorCode);
-		j.put("msg", errorMsg);
-		Redis.pub(ackChannel, j);
 	}
 }

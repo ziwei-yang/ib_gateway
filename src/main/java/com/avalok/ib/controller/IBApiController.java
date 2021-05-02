@@ -28,9 +28,8 @@ public class IBApiController {
 	public IBApiController(IConnectionHandler handler, ILogger inLogger, ILogger outLogger) {
 		_api = new ApiController(handler, inLogger, outLogger);
 	}
-	public int lastReqId() {
-		return _api.m_reqId - 1;
-	}
+	public int lastReqId() { return _api.m_reqId - 1; }
+	public int nextReqId() { return _api.m_reqId; }
 
 	////////////////////////////////////////////////////////////////
 	// API Operation history.
@@ -39,7 +38,7 @@ public class IBApiController {
 	protected static final int OPERATION_HISTORY_MAX = 5;
 
 	protected void recordOperationHistory(String his) {
-		info("--> " + his);
+		info("--> [" + nextReqId() + "] " + his);
 		_opRecs.add(his);
 		if (_opRecs.size() > OPERATION_HISTORY_MAX)
 			_opRecs.poll();
