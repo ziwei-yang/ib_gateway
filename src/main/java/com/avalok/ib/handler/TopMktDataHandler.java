@@ -32,7 +32,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	protected final JSONObject[] topBids = new JSONObject[] {new JSONObject()};
 	protected boolean topDataInited = false; // Wait until all ASK/BID filled
 
-	protected final JSONArray newTickData = new JSONArray();
+	protected final JSONArray newTicksData = new JSONArray();
+	protected final JSONArray newTicks = new JSONArray();
 	protected boolean tickDataInited = false; // Wait until tickSnapshotEnd()
 	
 	private Consumer<Jedis> broadcastTopLambda;
@@ -55,20 +56,22 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			broadcastTopLambda = new Consumer<Jedis> () {
 				@Override
 				public void accept(Jedis t) {
+					topDataSnapshot.set(2, System.currentTimeMillis());
 					t.publish(publishODBKChannel, JSON.toJSONString(topDataSnapshot));
 				}
 			};
 		}
 		
 		// Pre-build tick data.
-		newTickData.add(new JSONObject());
-		newTickData.add(0); // Timestamp
+		newTicks.add(new JSONObject());
+		newTicksData.add(newTicks);
+		newTicksData.add(0); // Timestamp
 		// Pre-build broadcast lambda.
 		if (broadcastTop) {
 			broadcastTickLambda = new Consumer<Jedis>() {
 				@Override
 				public void accept(Jedis t) {
-					t.publish(publishTickChannel, JSON.toJSONString(newTickData));
+					t.publish(publishTickChannel, JSON.toJSONString(newTicksData));
 				}
 			};
 		}
@@ -163,8 +166,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		lastTrade.put("p", lastTickPrice);
 		lastTrade.put("s", lastTickSize);
 		lastTrade.put("t", lastTickTime);
-		newTickData.set(0, lastTrade);
-		newTickData.set(1, System.currentTimeMillis());
+		newTicks.set(0, lastTrade);
+		newTicksData.set(1, System.currentTimeMillis());
 		if (broadcastTickLambda != null)
 			Redis.exec(broadcastTickLambda);
 		lastTickTime = null;

@@ -21,7 +21,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 	public final int max_depth = 10;
 	protected IBContract _contract;
 	protected final double multiplier;
-	protected final String publishChannel; // Publish odbk to universal system
+	protected final String publishODBKChannel; // Publish odbk to universal system
 	
 	protected boolean depthInited = false; // Wait until all ASK/BID filled
 	protected int _ct = 0;
@@ -32,7 +32,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 	private Consumer<Jedis> broadcastLambda;
 	public DeepMktDataHandler(IBContract contract, boolean broadcast) {
 		_contract = contract;
-		publishChannel = "URANUS:"+contract.exchange()+":"+contract.pair()+":full_odbk_channel";
+		publishODBKChannel = "URANUS:"+contract.exchange()+":"+contract.pair()+":full_odbk_channel";
 		if (contract.multiplier() == null)
 			multiplier = 1;
 		else
@@ -46,7 +46,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 			broadcastLambda = new Consumer<Jedis> () {
 				@Override
 				public void accept(Jedis t) {
-					t.publish(publishChannel, JSON.toJSONString(odbkSnapshot));
+					t.publish(publishODBKChannel, JSON.toJSONString(odbkSnapshot));
 				}
 			};
 		}
@@ -59,7 +59,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 		if (pos >= max_depth) return;
 //		log("DeepType " + pos + " " + side + " " + operation + " " + price + " " + size);
 		if (_ct == 0)
-			log(">>> broadcast depth " + publishChannel);
+			log(">>> broadcast depth " + publishODBKChannel);
 		_ct += 1;
 		
 		double size = size_in_lot * multiplier;
