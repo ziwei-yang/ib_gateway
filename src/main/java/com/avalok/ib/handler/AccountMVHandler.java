@@ -34,19 +34,21 @@ public class AccountMVHandler implements IAccountHandler {
 		// What we have interest is how much balance remained in currency.
 		JSONObject j = new JSONObject();
 		if (desc2 != null && desc2.equals("BASE")) return; // Skip all info in BASE currency. 
+		String asset = null;
 		if (key.equals("CashBalance")) {
-			j.put("type", key);
-			j.put("currency", desc1);
-			j.put("balance", desc2);
+			j.put("type", "cash");
+			j.put("currency", desc2);
+			j.put("balance", desc1);
+			asset = desc2;
 		} else return;
-		info("<-- AccountMV " + account + " key " + key + " " + desc1 + " " + desc2);
+		info("<-- " + account + " MV " + key + " " + desc1 + " " + desc2);
 		if (_dataInit) {
 			_data.putIfAbsent(account, new ConcurrentHashMap<String, JSONObject>());
-			_data.get(account).put(desc1, j);
+			_data.get(account).put(asset, j);
 			writePosition();
 		} else {
 			_tmpData.putIfAbsent(account, new ConcurrentHashMap<String, JSONObject>());
-			_tmpData.get(account).put(desc1, j);
+			_tmpData.get(account).put(asset, j);
 		}
 	}
 
@@ -60,8 +62,9 @@ public class AccountMVHandler implements IAccountHandler {
 		IBContract ibc = new IBContract(position.contract());
 		ContractDetailsHandler.findDetails(ibc); // Auto query details for instruments in portfolio
 		String account = position.account();
-		info("<-- AccountMV pfl " + account + " " + ibc.exchange() + "/" + ibc.shownName() + " pos:" + position.position() + " cost:" + position.averageCost());
+		info("<-- " + account + " Pos " + ibc.exchange() + "/" + ibc.shownName() + " pos:" + position.position() + " cost:" + position.averageCost());
 		JSONObject j = new JSONObject();
+		j.put("type", "position");
 		j.put("contract", ibc.toJSON());
 		j.put("pos", position.position());
 		j.put("avgCost", position.averageCost());

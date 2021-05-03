@@ -1,7 +1,5 @@
 package com.avalok.ib.handler;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.function.Consumer;
 
 import com.alibaba.fastjson.JSON;
@@ -138,10 +136,12 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	}
 
 	/////////////////////////////////////////////////////
-	// Trade tick always comes with triple messages:
+	// Trade tick always comes with triple(or more) messages:
 	// tickString() tickType LAST_TIMESTAMP VALUE: 1620015539
 	// tickPrice() tickType LAST price 58280.0
 	// tickSize() tickType LAST_SIZE size 1
+	// tickPrice() tickType LAST price 59120.0 (if have more trade at same time)
+	// tickSize() tickType LAST_SIZE size 1 (if have more trade at same time)
 	/////////////////////////////////////////////////////
 	private Long lastTickTime = null;
 	private Double lastTickPrice = null;
@@ -150,8 +150,9 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	private void recordLastTrade() {
 		if (tickDataInited == false)
 			return;
-		if (lastTickTime == null || lastTickPrice == null || lastTickSize == null) {
-			err("Should not call recordLastTrade() with not completed data " + _contract.shownName());
+		if (lastTickPrice == null || lastTickSize == null) {
+			err("Call recordLastTrade() with incompleted data " + _contract.shownName() +
+					" lastTickPrice " + lastTickPrice + " lastTickSize " + lastTickSize);
 			return;
 		}
 		lastTrade = new JSONObject();
@@ -170,7 +171,6 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		newTicksData.set(1, System.currentTimeMillis());
 		if (broadcastTickLambda != null)
 			Redis.exec(broadcastTickLambda);
-		lastTickTime = null;
 	}
 
 	@Override
