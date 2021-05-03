@@ -18,15 +18,16 @@ import com.ib.client.Types.*;
 import static com.bitex.util.DebugUtil.*;
 
 public class DeepMktDataHandler implements IDeepMktDataHandler {
+	public final int max_depth = 10;
 	protected IBContract _contract;
-	protected boolean dataInited = false; // Wait until all ASK/BID filled
+	protected final double multiplier;
+	protected final String publishChannel; // Publish odbk to universal system
+	
+	protected boolean depthInited = false; // Wait until all ASK/BID filled
 	protected int _ct = 0;
-	public final static int MAX_DEPTH = 10;
 	protected List<JSONObject> asks = new ArrayList<>();
 	protected List<JSONObject> bids = new ArrayList<>();
-	protected final double multiplier;
 	protected final JSONArray odbkSnapshot = new JSONArray();
-	protected final String publishChannel; // Publish odbk to universal system
 
 	private Consumer<Jedis> broadcastLambda;
 	public DeepMktDataHandler(IBContract contract, boolean broadcast) {
@@ -52,17 +53,10 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 	}
 	
 	public IBContract contract() { return _contract; }
-	
-	public void clearData() {
-		bids.clear();
-		asks.clear();
-		odbkSnapshot.set(2, 0);
-		Redis.exec(broadcastLambda);
-	}
 
 	@Override
 	public void updateMktDepth(int pos, String mm, DeepType operation, DeepSide side, double price, int size_in_lot) {
-		if (pos >= MAX_DEPTH) return;
+		if (pos >= max_depth) return;
 //		log("DeepType " + pos + " " + side + " " + operation + " " + price + " " + size);
 		if (_ct == 0)
 			log(">>> broadcast depth " + publishChannel);
@@ -71,7 +65,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 		double size = size_in_lot * multiplier;
 		JSONObject o = null;
 		if (operation == DeepType.INSERT) {
-			dataInited = false;
+			depthInited = false;
 			o = new JSONObject();
 			o.put("p", price);
 			o.put("s", size);
@@ -88,7 +82,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 			}
 		} else if (operation == DeepType.UPDATE) {
 			// Reuse o from asks/bids
-			dataInited = true;
+			depthInited = true;
 			if (side == DeepSide.BUY) {
 				if (bids.size() > pos)
 					o = bids.get(pos);
@@ -103,7 +97,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 			o.put("p", price);
 			o.put("s", size);
 		} else if (operation == DeepType.DELETE) {
-			dataInited = true;
+			depthInited = true;
 			if (side == DeepSide.BUY) {
 				if (bids.size() > pos)
 					bids.remove(pos);
@@ -116,7 +110,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 			return;
 		}
 		// Debug
-//		if (pos < 3 && dataInited) {
+//		if (pos < 3 && depthInited) {
 //			log(_contract.shownName() + "------------------------------------------" + bids.size());
 //			for (int i = 0; i < 3; i++)
 //				if (asks.size() > i && bids.size() > i)
@@ -124,7 +118,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 //							+ bids.get(i).getDoubleValue("p") + " --- " + asks.get(i).getDoubleValue("p") + " "
 //							+ asks.get(i).getIntValue("s"));
 //		}
-		if (dataInited && broadcastLambda != null) {
+		if (depthInited && broadcastLambda != null) {
 			odbkSnapshot.set(2, System.currentTimeMillis());
 			Redis.exec(broadcastLambda);
 		}

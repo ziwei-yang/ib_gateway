@@ -18,6 +18,7 @@ import com.ib.controller.ApiController.ILiveOrderHandler;
 import com.ib.controller.ApiController.IOrderHandler;
 import com.ib.controller.ApiController.IPositionHandler;
 import com.ib.controller.ApiController.IRealTimeBarHandler;
+import com.ib.controller.ApiController.ITopMktDataHandler;
 import com.ib.controller.ApiController.ITradeReportHandler;
 
 /**
@@ -109,6 +110,16 @@ public class IBApiController {
 		recordOperationHistory("cancelDeepMktData");
 		_api.cancelDeepMktData(isSmartDepth, handler);
 	}
+    public void reqTopMktData(Contract contract, String genericTickList, boolean snapshot, boolean regulatorySnapshot, ITopMktDataHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("reqTopMktData");
+		_api.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+    }
+    public void cancelTopMktData( ITopMktDataHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("cancelTopMktData");
+		_api.cancelTopMktData(handler);
+    }
 	public void reqExecutions(ExecutionFilter filter, ITradeReportHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqExecutions");

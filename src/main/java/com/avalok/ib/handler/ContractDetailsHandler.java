@@ -128,6 +128,7 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
+		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
 		log(">>> Redis " + key);
 		Redis.set(key, j);
 		return j;

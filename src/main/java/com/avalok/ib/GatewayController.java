@@ -62,7 +62,7 @@ public class GatewayController extends BaseIBController {
 	private ConcurrentHashMap<Integer, String> _depthTaskByReqID = new ConcurrentHashMap<>();
 	private final boolean isSmartDepth = false;
 
-	private int subscribeMarketData(IBContract contract) {
+	private int subscribeDepthData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
 		if (_depthTasks.get(jobKey) != null) {
 			err("Task dulicated, skip subscribing depth data " + jobKey);
@@ -78,7 +78,7 @@ public class GatewayController extends BaseIBController {
 		return qid;
 	}
 
-	private int unsubscribeMarketData(IBContract contract) {
+	private int unsubscribeDepthData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
 		DeepMktDataHandler handler = _depthTasks.get(jobKey);
 		if (_depthTasks.get(jobKey) == null) {
@@ -92,12 +92,57 @@ public class GatewayController extends BaseIBController {
 		return qid;
 	}
 	
+	////////////////////////////////////////////////////////////////
+	// Market top data module
+	////////////////////////////////////////////////////////////////
+	private ConcurrentHashMap<String, TopMktDataHandler> _topTasks = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<Integer, String> _topTaskByReqID = new ConcurrentHashMap<>();
+	private int subscribeTopData(IBContract contract) {
+		String jobKey = contract.exchange() + "/" + contract.shownName();
+		if (_topTasks.get(jobKey) != null) {
+			log("Task dulicated, skip subscribing top data " + jobKey);
+			return 0;
+		}
+		log("Subscribe top data for " + jobKey);
+		boolean broadcastTop = true, broadcastTick = true;
+		TopMktDataHandler handler = new TopMktDataHandler(contract, broadcastTop, broadcastTick);
+		// See <Generic tick required> at https://interactivebrokers.github.io/tws-api/tick_types.html
+		String genericTickList = "";
+		// Request snapshot, then updates
+		boolean snapshot = true, regulatorySnapshot = true;
+		_apiController.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+		snapshot = false; regulatorySnapshot = false;
+		_apiController.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+		int qid = _apiController.lastReqId();
+		_topTaskByReqID.put(qid, jobKey); // reference for error msg
+		_topTasks.put(jobKey, handler);
+		return qid;
+	}
+
+	private int unsubscribeTopData(IBContract contract) {
+		String jobKey = contract.exchange() + "/" + contract.shownName();
+		TopMktDataHandler handler = _topTasks.get(jobKey);
+		if (_topTasks.get(jobKey) == null) {
+			err("Task not exist, skip canceling top data " + jobKey);
+			return 0;
+		}
+		log("Cancel top data for " + jobKey);
+		_apiController.cancelTopMktData(handler);
+		int qid = _apiController.lastReqId();
+		_topTasks.remove(jobKey);
+		return qid;
+	}
+	
 	private void restartMarketData() {
-		info("Re-subscribe all odbk data");
-		Collection<DeepMktDataHandler> handlers = _depthTasks.values();
-		for (DeepMktDataHandler h : handlers) {
-			unsubscribeMarketData(h.contract());
-			subscribeMarketData(h.contract());
+		info("Re-subscribe all depth data");
+		for (DeepMktDataHandler h : _depthTasks.values()) {
+			unsubscribeDepthData(h.contract());
+			subscribeDepthData(h.contract());
+		}
+		info("Re-subscribe all top data");
+		for (TopMktDataHandler h : _topTasks.values()) {
+			unsubscribeTopData(h.contract());
+			subscribeTopData(h.contract());
 		}
 	}
 	
@@ -207,7 +252,10 @@ public class GatewayController extends BaseIBController {
 			try {
 				switch(j.getString("cmd")) {
 				case "SUB_ODBK":
-					apiReqId = subscribeMarketData(new IBContract(j.getJSONObject("contract")));
+					apiReqId = subscribeDepthData(new IBContract(j.getJSONObject("contract")));
+					break;
+				case "SUB_TOP":
+					apiReqId = subscribeTopData(new IBContract(j.getJSONObject("contract")));
 					break;
 				case "RESET":
 					_postConnected();
@@ -267,8 +315,13 @@ public class GatewayController extends BaseIBController {
 	public void message(int id, int errorCode, String errorMsg) {
 		log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 		JSONObject j = new JSONObject();
+		j.put("type", "msg");
+		j.put("ibApiId", id);
+		j.put("code", errorCode);
+		j.put("msg", errorMsg);
 		switch (errorCode) {
-		case 200: // No security definition has been found for the request
+		case 200: // No security/exchange has been found for the request
+			Redis.pub(ackChannel, j);
 			break;
 		case 309: // Max number (3) of market depth requests has been reached
 			String depthJobKey = _depthTaskByReqID.remove(id);
@@ -276,11 +329,11 @@ public class GatewayController extends BaseIBController {
 				err("Remove failed depth task " + depthJobKey);
 				_depthTasks.remove(depthJobKey);
 				j.put("type", "error");
-				j.put("ibApiId", id);
-				j.put("code", errorCode);
 				j.put("msg", "depth req failed " + depthJobKey);
 				Redis.pub(ackChannel, j);
+				break;
 			}
+			Redis.pub(ackChannel, j);
 			break;
 		case 317: // Market depth data has been RESET. Please empty deep book contents before applying any new entries.
 			log("Initialise all data jobs again.");
@@ -300,10 +353,6 @@ public class GatewayController extends BaseIBController {
 			break;
 		default:
 			super.message(id, errorCode, errorMsg);
-			j.put("type", "msg");
-			j.put("ibApiId", id);
-			j.put("code", errorCode);
-			j.put("msg", errorMsg);
 			Redis.pub(ackChannel, j);
 			break;
 		}
