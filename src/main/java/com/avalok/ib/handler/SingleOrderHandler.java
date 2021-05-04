@@ -43,7 +43,7 @@ public class SingleOrderHandler implements IOrderHandler {
 			int permId, int parentId, double lastFillPrice, 
 			int clientId, String whyHeld, double mktCapPrice) {
 		_order.setStatus(status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
-		_orderCacheHandler.writeOMS(_order);
+		_orderCacheHandler.writeToCacheAndOMS(_order);
 	}
 
 	@Override
@@ -53,11 +53,11 @@ public class SingleOrderHandler implements IOrderHandler {
 		switch(errorCode) {
 			case 201: // code:201, msg:Order rejected - reason:
 				_order.setRejected(errorMsg);
-				_orderCacheHandler.writeOMS(_order);
+				_orderCacheHandler.writeToCacheAndOMS(_order);
 				break;
 			case 202: // code:202, msg:Order Canceled - reason:
 				_order.setCancelled(errorMsg);
-				_orderCacheHandler.writeOMS(_order);
+				_orderCacheHandler.writeToCacheAndOMS(_order);
 				break;
 			default:
 				log(_order);
