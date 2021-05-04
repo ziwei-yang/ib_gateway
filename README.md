@@ -1,5 +1,8 @@
 # ib_gateway
-IB API sucks, this is an gateway, placy/modify order, with account/order cache and on-req market data repeater based on Redis pub/sub channel.
+IB API sucks
+
+This is an API wrapper for placy/modify order, with balance/order cache and on-req market data repeater based on Redis pub/sub channel.
+
 Use ruby/python/nodejs to make trading bot easier, without dealing with dozens of IB API handlers, to save life, and earn life.
 
 # Underlying IB/TWS lib:
