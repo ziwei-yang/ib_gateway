@@ -1,5 +1,6 @@
 # ib_gateway
-An IB order gateway, order cache system and market data repeater on REDIS
+IB API sucks, this is an gateway, placy/modify order, with account/order cache and on-req market data repeater based on Redis pub/sub channel.
+Use ruby/python/nodejs to make trading bot easier, without dealing with dozens of IB API handlers, to save life, and earn life.
 
 # Underlying IB/TWS lib:
 Version: API 9.76 Release Date: May 08 2019 

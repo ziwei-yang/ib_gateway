@@ -13,7 +13,6 @@ import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.controller.BaseIBController;
 import com.avalok.ib.handler.*;
 import com.bitex.util.Redis;
-import java.util.function.Consumer;
 
 import com.ib.client.*;
 
@@ -135,12 +134,14 @@ public class GatewayController extends BaseIBController {
 	
 	private void restartMarketData() {
 		info("Re-subscribe all depth data");
-		for (DeepMktDataHandler h : _depthTasks.values()) {
+		 DeepMktDataHandler[] handlers1 = _depthTasks.values().toArray(new DeepMktDataHandler[0]);
+		for (DeepMktDataHandler h : handlers1) {
 			unsubscribeDepthData(h.contract());
 			subscribeDepthData(h.contract());
 		}
 		info("Re-subscribe all top data");
-		for (TopMktDataHandler h : _topTasks.values()) {
+		TopMktDataHandler[] handlers2 = _topTasks.values().toArray(new TopMktDataHandler[0]);
+		for (TopMktDataHandler h : handlers2) {
 			unsubscribeTopData(h.contract());
 			subscribeTopData(h.contract());
 		}

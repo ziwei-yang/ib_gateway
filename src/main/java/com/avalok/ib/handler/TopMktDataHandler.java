@@ -94,6 +94,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		case LAST:
 			lastTickPrice = price;
 			break;
+		case OPEN:
+			break;
 		case CLOSE:
 			break;
 		case LOW:
@@ -125,9 +127,15 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			break;
 		case VOLUME:
 			break;
+		case OPEN:
+			break;
+		case CLOSE:
+			break;
 		case LOW:
 			break;
 		case HIGH:
+			break;
+		case HALTED:
 			break;
 		default:
 			info("tickSize() tickType " + tickType + " size " + size);

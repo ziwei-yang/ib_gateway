@@ -68,7 +68,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	 * Write to hset "URANUS:"+ibc.exchange()+":"+_twsName+":O:"+ibc.pair()
 	 * Also publish at channel "URANUS:"+ibc.exchange()+":"+_twsName+":O_channel"
 	 */
-	public void writeOMS(Jedis t, IBOrder o) {
+	private void writeOMS(Jedis t, IBOrder o) {
 		JSONObject j = o.toOMSJSON();
 		String jstr = JSON.toJSONString(j);
 		IBContract ibc = o.contract;
@@ -158,11 +158,12 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		if (_processingOrderId != null &&_processingOrderId == orderId) {
 			// log in setStatus() already.
 			_processingOrder.setStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
+			_aliveOrders.recOrder(_processingOrder);
+			_recvOpenOrders.add(_processingOrder);
+			if(_omsInit) writeOMS(_processingOrder); // Update new order after OMS initialised.
 		} else {
 			err("orderStatus() Unexpected orderId " + orderId + ", not " + _processingOrderId);
 		}
-		_aliveOrders.recOrder(_processingOrder);
-		_recvOpenOrders.add(_processingOrder);
 	}
 
 	/**
@@ -197,12 +198,12 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			case 201: // code:201, msg:Order rejected - reason:
 				o.setRejected(errorMsg);
 				_deadOrders.recOrder(o);
-				writeOMS(o);
+				if(_omsInit) writeOMS(o);
 				break;
 			case 202: // code:202, msg:Order Canceled - reason:
 				o.setCancelled(errorMsg);
 				_deadOrders.recOrder(o);
-				writeOMS(o);
+				if(_omsInit) writeOMS(o);
 				break;
 			default:
 				log(o);
