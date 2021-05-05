@@ -64,6 +64,15 @@ public class IBOrder {
 		ContractDetailsHandler.findDetails(contract);
 		order = _order;
 		orderState = _orderState;
+		fixIBBug01();
+	}
+
+	private void fixIBBug01() {
+		// IB BUG fix, fuck totalQuantity
+		if (orderState.status() == OrderStatus.Filled && order.totalQuantity() == 0) {
+			order.totalQuantity(order.filledQuantity());
+			warn("Fixing IB zero totalQuantity bug, fuck me -> " + order.totalQuantity());
+		}
 	}
 	
 	
@@ -102,6 +111,7 @@ public class IBOrder {
 		mktCapPrice = _mktCapPrice;
 		whyHeld = _whyHeld;
 		statusFilled = true;
+		fixIBBug01();
 		log("<-- orderStatus:\n" + toString());
 	}
 

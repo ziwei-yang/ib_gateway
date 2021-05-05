@@ -194,8 +194,7 @@ public class GatewayController extends BaseIBController {
 			err("Abort order cancelling, invalid order id 0 by permId " + permId);
 			return 0;
 		}
-		info("Find order by permId " + permId + " cancel " + order.orderId());
-		log(order.toString());
+		log("Find order by permId " + permId + " cancel " + order.orderId() + "\n" + order.toString());
 		_apiController.cancelOrder(order.orderId());
 		return _apiController.lastReqId();
 	}
@@ -360,6 +359,8 @@ public class GatewayController extends BaseIBController {
 		case 2108: // Market data farm connection is inactive but should be available upon demand
 			log("Initialise all data jobs again.");
 			_postConnected();
+			break;
+		case 2157: // msg:Sec-def data farm connection is broken:secdefhk
 			break;
 		default:
 			super.message(id, errorCode, errorMsg);

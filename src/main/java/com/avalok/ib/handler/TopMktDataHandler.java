@@ -55,7 +55,10 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 				@Override
 				public void accept(Jedis t) {
 					topDataSnapshot.set(2, System.currentTimeMillis());
-					t.publish(publishODBKChannel, JSON.toJSONString(topDataSnapshot));
+					// Dont do this when same depth handler is working.
+					Long depthT = DeepMktDataHandler.CHANNEL_TIME.get(publishODBKChannel);
+					if (depthT == null || depthT < System.currentTimeMillis() - 1000)
+						t.publish(publishODBKChannel, JSON.toJSONString(topDataSnapshot));
 				}
 			};
 		}

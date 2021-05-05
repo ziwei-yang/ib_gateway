@@ -86,8 +86,11 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		IBContract ibc = o.contract;
 		JSONObject pubJ = new JSONObject();
 		String hmap = "URANUS:"+ibc.exchange()+":"+o.account()+":O:"+ibc.pair();
-		if (o.omsId() == null && o.permId() == 0 && (o.isAlive() != null && o.isAlive() != true)) {
-			log("Skip writing non-dead order, permId is not assigned");
+		t.hdel(hmap, "0"); // Clear historical remained trash, could delete this after stable version released.
+		if (o.permId() == 0) {
+			// If order is alive, permId will be added soon
+			// If order is dead, other reason should be sent from ack channel.
+			log("Skip writing alive or unknown status order, permId is not assigned");
 			return;
 		}
 		if (o.omsId() != null) {
@@ -100,6 +103,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			t.hset(hmap, o.omsClientOID(), jstr);
 			pubJ.put(o.omsClientOID(), jstr);
 		}
+		log(o);
 		t.hset(hmap, "t", timeStr); // Mark latest updated timestamp.
 		t.publish("URANUS:"+ibc.exchange()+":"+o.account()+":O_channel", JSON.toJSONString(pubJ));
 	}

@@ -3,6 +3,7 @@ package com.avalok.ib.handler;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Consumer;
+import java.util.concurrent.ConcurrentHashMap;
 
 import com.ib.controller.ApiController.IDeepMktDataHandler;
 
@@ -18,7 +19,9 @@ import com.ib.client.Types.*;
 import static com.bitex.util.DebugUtil.*;
 
 public class DeepMktDataHandler implements IDeepMktDataHandler {
-	public final int max_depth = 10;
+	// Record last channel work timestamp.
+	public final static ConcurrentHashMap<String, Long> CHANNEL_TIME = new ConcurrentHashMap<>();
+	public final int max_depth = 30;
 	protected IBContract _contract;
 	protected final double multiplier;
 	protected final String publishODBKChannel; // Publish odbk to universal system
@@ -46,6 +49,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 			broadcastLambda = new Consumer<Jedis> () {
 				@Override
 				public void accept(Jedis t) {
+					CHANNEL_TIME.put(publishODBKChannel, System.currentTimeMillis());
 					t.publish(publishODBKChannel, JSON.toJSONString(odbkSnapshot));
 				}
 			};
