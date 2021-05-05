@@ -5,10 +5,13 @@ import static com.bitex.util.DebugUtil.info;
 import static com.bitex.util.DebugUtil.log;
 
 import com.avalok.ib.IBOrder;
-import com.avalok.ib.controller.BaseIBController;
+import com.avalok.ib.GatewayController;
+
 import com.ib.client.OrderState;
 import com.ib.client.OrderStatus;
 import com.ib.controller.ApiController.IOrderHandler;
+
+import com.alibaba.fastjson.JSONObject;
 
 /**
  * See AllOrderHandler, this SingleOrderHandler for placing/modifying single order only.
@@ -18,10 +21,10 @@ import com.ib.controller.ApiController.IOrderHandler;
 public class SingleOrderHandler implements IOrderHandler {
 	
 	private IBOrder _order;
-	private BaseIBController _ibController;
+	private GatewayController _ibController;
 	private AllOrderHandler _orderCacheHandler;
 
-	public SingleOrderHandler(BaseIBController ibController, AllOrderHandler orderCacheHandler, IBOrder o) {
+	public SingleOrderHandler(GatewayController ibController, AllOrderHandler orderCacheHandler, IBOrder o) {
 		_ibController = ibController;
 		_order = o;
 		_orderCacheHandler = orderCacheHandler;
@@ -49,7 +52,15 @@ public class SingleOrderHandler implements IOrderHandler {
 	@Override
 	public void handle(int errorCode, String errorMsg) {
 		int orderId = _order.orderId();
+		JSONObject j = new JSONObject();
+		j.put("type", "order_error");
+		j.put("orderId", orderId);
+		j.put("permId", _order.permId());
+		j.put("client_oid", _order.omsClientOID());
+		j.put("code", errorCode);
+		j.put("msg", errorMsg);
 		// mark order status.
+		boolean printMsg = true;
 		switch(errorCode) {
 			case 201: // code:201, msg:Order rejected - reason:
 				_order.setRejected(errorMsg);
@@ -61,14 +72,19 @@ public class SingleOrderHandler implements IOrderHandler {
 				break;
 			default:
 				log(_order);
-				err("<-- handle unknown code for [" + orderId + "]:" + errorCode + "," + errorMsg);
-				return;
+				// Should be some kind of error, let clients know.
+				err("<-- broadcast error for order [" + _order.omsClientOID() + "]\norder id [" + orderId + "]:" + errorCode + "," + errorMsg);
+				_ibController.ack(j);
+				printMsg = false;
+				break;
 		}
 		// o includes errorMsg
-		if (errorMsg.length() > 20)
-			info("<-- order msg for [" + orderId + "]," + errorCode + " " + errorMsg.substring(0, 19) + "...\n" + _order);
+		if (printMsg == false)
+			;
+		else if (errorMsg.length() > 20)
+			info("<-- order msg for order [" + orderId + "]," + errorCode + " " + errorMsg.substring(0, 19) + "...\n" + _order);
 		else
-			info("<-- order msg for [" + orderId + "]," + errorCode + " " + errorMsg + "...\n" + _order);
+			info("<-- order msg for order [" + orderId + "]," + errorCode + " " + errorMsg + "...\n" + _order);
 		// info("<-- order msg for [" + orderId + "]," + errorCode + "," + errorMsg);
 		// Tell _ibController this message is processed.
 		_ibController.lastAckErrorID = _order.orderId();

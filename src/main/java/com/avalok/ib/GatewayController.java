@@ -367,4 +367,8 @@ public class GatewayController extends BaseIBController {
 			break;
 		}
 	}
+
+	public void ack(JSONObject j) {
+		Redis.pub(ackChannel, j);
+	}
 }

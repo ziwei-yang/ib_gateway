@@ -15,7 +15,7 @@ import com.alibaba.fastjson.JSONObject;
 
 import com.avalok.ib.IBContract;
 import com.avalok.ib.IBOrder;
-import com.avalok.ib.controller.BaseIBController;
+import com.avalok.ib.GatewayController;
 import com.ib.client.CommissionReport;
 import com.ib.client.Contract;
 import com.ib.client.Execution;
@@ -50,10 +50,10 @@ import com.ib.controller.ApiController.ITradeReportHandler;
  */
 
 public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandler,ITradeReportHandler {
-	private final BaseIBController _ibController;
+	private final GatewayController _ibController;
 	public final String _twsName;
 	protected OrderCache _allOrders = new OrderCache();
-	public AllOrderHandler(BaseIBController ibController) {
+	public AllOrderHandler(GatewayController ibController) {
 		_ibController = ibController;
 		_twsName = ibController.name();
 	}
@@ -86,8 +86,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		IBContract ibc = o.contract;
 		JSONObject pubJ = new JSONObject();
 		String hmap = "URANUS:"+ibc.exchange()+":"+o.account()+":O:"+ibc.pair();
-		if (o.omsId() == null && o.permId() == 0 && (o.isAlive() != false)) {
-			log("Skip writing non-dead order, permId is not assigned\n" + o.toString());
+		if (o.omsId() == null && o.permId() == 0 && (o.isAlive() != null && o.isAlive() != true)) {
+			log("Skip writing non-dead order, permId is not assigned");
 			return;
 		}
 		if (o.omsId() != null) {
@@ -195,15 +195,6 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	 */
 	@Override
 	public void handle(int orderId, int errorCode, String errorMsg) {
-		if (orderId >= -1){
-			// 10000007 200,Invalid destination exchange specified
-			// id:-1, code:2158, msg:Sec-def data farm connection is OK:secdefhk
-			// id:-1, code:2106, msg:HMDS data farm connection is OK:hkhmds
-			// Believe BaseIBController could handle that.
-			// log("<-- handle omit " + orderId + "," + errorCode + "," + errorMsg);
-			log("<-- handle omit " + orderId + "," + errorCode);
-			return;
-		}
 		boolean process = false;
 		IBOrder o = null;
 		if (_processingOrderId != null && _processingOrderId == orderId) {
@@ -214,9 +205,17 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			if (o != null) process = true;
 		}
 		if (! process) {
-			err("<-- handle no orderId[" + orderId + "] " + errorCode + "," + errorMsg);
+			err("<-- can't find order [" + orderId + "]:" + errorCode + "," + errorMsg);
 			return;
 		}
+		JSONObject j = new JSONObject();
+		j.put("type", "order_error");
+		j.put("orderId", orderId);
+		j.put("permId", o.permId());
+		j.put("client_oid", o.omsClientOID());
+		j.put("code", errorCode);
+		j.put("msg", errorMsg);
+		boolean printMsg = true;
 		// mark order status.
 		switch(errorCode) {
 		case 161: // code:161, msg:Cancel attempted when order is not in a cancellable state.  Order permId =1338982574
@@ -236,11 +235,16 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			break;
 		default:
 			log(o);
-			err("<-- handle unknown code for [" + orderId + "]:" + errorCode + "," + errorMsg);
-			return;
+			// Should be some kind of error, let clients know.
+			err("<-- broadcast error for order [" + o.omsClientOID() + "]\norder id [" + orderId + "]:" + errorCode + "," + errorMsg);
+			_ibController.ack(j);
+			printMsg = false;
+			break;
 		}
 		// o includes errorMsg
-		if (errorMsg.length() > 20)
+		if (printMsg == false)
+			;
+		else if (errorMsg.length() > 20)
 			info("<-- order msg for [" + orderId + "]," + errorCode + " " + errorMsg.substring(0, 19) + "...\n" + o);
 		else
 			info("<-- order msg for [" + orderId + "]," + errorCode + " " + errorMsg + "...\n" + o);
