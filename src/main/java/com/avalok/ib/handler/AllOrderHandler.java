@@ -58,6 +58,14 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		_twsName = ibController.name();
 	}
 	
+	////////////////////////////////////////////////////////////////
+	// Cache utilities
+	////////////////////////////////////////////////////////////////
+	
+	public IBOrder orderByPermId(int permId) {
+		return _allOrders.byPermId(permId);
+	}
+	
 	public void writeToCacheAndOMS(IBOrder o) {
 		_allOrders.recOrder(o);
 		if (!_omsInit) return; // Don't hurry to write until _omsInit
@@ -76,17 +84,23 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		JSONObject j = o.toOMSJSON();
 		String jstr = JSON.toJSONString(j);
 		IBContract ibc = o.contract;
-		String hmap = "URANUS:"+ibc.exchange()+":"+o.account()+":O:"+ibc.pair();
-		log(">>> OMS " + hmap + " / " + o.omsId());
-		t.hset(hmap, "t", timeStr); // Mark latest updated timestamp.
-		t.hset(hmap, o.omsId(), jstr);
 		JSONObject pubJ = new JSONObject();
-		pubJ.put(""+o.omsId(), jstr);
+		String hmap = "URANUS:"+ibc.exchange()+":"+o.account()+":O:"+ibc.pair();
+		if (o.omsId() == null && o.permId() == 0 && (o.isAlive() != false)) {
+			log("Skip writing non-dead order, permId is not assigned\n" + o.toString());
+			return;
+		}
+		if (o.omsId() != null) {
+			log(">>> OMS " + hmap + " / " + o.omsId());
+			t.hset(hmap, o.omsId(), jstr);
+			pubJ.put(o.omsId(), jstr);
+		}
 		if (o.omsClientOID() != null) {
 			log(">>> OMS " + hmap + " / " + o.omsClientOID());
 			t.hset(hmap, o.omsClientOID(), jstr);
-			pubJ.put(""+o.omsClientOID(), jstr);
+			pubJ.put(o.omsClientOID(), jstr);
 		}
+		t.hset(hmap, "t", timeStr); // Mark latest updated timestamp.
 		t.publish("URANUS:"+ibc.exchange()+":"+o.account()+":O_channel", JSON.toJSONString(pubJ));
 	}
 

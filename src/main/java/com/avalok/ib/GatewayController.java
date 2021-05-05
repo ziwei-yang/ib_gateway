@@ -185,8 +185,18 @@ public class GatewayController extends BaseIBController {
 		_apiController.placeOrModifyOrder(order.contract, order.order, new SingleOrderHandler(this, orderCacheHandler, order));
 		return _apiController.lastReqId();
 	}
-	protected int cancelOrder(int orderId) {
-		_apiController.cancelOrder(orderId);
+	protected int cancelOrder(int permId) {
+		IBOrder order = orderCacheHandler.orderByPermId(permId);
+		if (order == null) {
+			err("Abort order cancelling, no order by permId " + permId);
+			return 0;
+		} else if (order.orderId() == 0) {
+			err("Abort order cancelling, invalid order id 0 by permId " + permId);
+			return 0;
+		}
+		info("Find order by permId " + permId + " cancel " + order.orderId());
+		log(order.toString());
+		_apiController.cancelOrder(order.orderId());
 		return _apiController.lastReqId();
 	}
 	protected int cancelAll() {
@@ -267,7 +277,7 @@ public class GatewayController extends BaseIBController {
 					apiReqId = placeOrder(new IBOrder(j.getJSONObject("iborder")));
 					break;
 				case "CANCEL_ORDER":
-					apiReqId = cancelOrder(j.getInteger("apiOrderId"));
+					apiReqId = cancelOrder(j.getInteger("permId"));
 					break;
 				case "CANCEL_ALL":
 					apiReqId = cancelAll();

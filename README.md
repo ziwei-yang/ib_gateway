@@ -1,7 +1,7 @@
 # ib_gateway
 IB API sucks
 
-This is an API wrapper for placy/modify order, with balance/order cache and on-req market data repeater based on Redis pub/sub channel.
+This is an API wrapper for place/modify order, with balance/order cache and on-req market data repeater based on Redis pub/sub channel.
 
 Use ruby/python/nodejs to make trading bot easier, without dealing with dozens of IB API handlers, to save life, and earn life.
 
@@ -68,7 +68,7 @@ ib\_gateway listens command on channel `Redis/IBGateway:{name}:CMD`, reply ACK w
 	- {contract=} with limit info, query all possible results.
 	- secType and symbol is required in contract
 * PLACE\_ORDER
-	- `{iborder={contract:{full\_detail\_contract}, order:{}}}`
+	- `{iborder={contract:{full_detail_contract}, order:{}}}`
 * CANCEL\_ORDER
 	- `{apiOrderId=}`
 * CANCEL\_ALL

@@ -119,6 +119,34 @@ public class IBOrder {
 		extMsg = msg;
 	}
 	public void setCompleted() { statusFilled = true; }
+	/**
+	 * return null : unknown
+	 */
+	public Boolean isAlive() {
+		if (statusFilled != true) return null;
+		if (extStatus != null) {
+			switch (extStatus) {
+			case "Rejected":
+				return false;
+			case "Cancelled":
+				return false;
+			default:
+				errWithTrace("Unknwon extStatus " + extStatus);
+				break;
+			}
+		}
+		if (orderState == null) return null;
+		if (orderState.status().isActive()) return true;
+		if (orderState.status() == OrderStatus.Inactive) {
+			// https://interactivebrokers.github.io/tws-api/order_submission.html#order_status
+			if (order.orderRef() != null && order.orderRef().startsWith("uranus_"))
+				return true; // an order is placed manually in TWS while the exchange is closed.
+			else
+				return false;
+		}
+		if (orderState.status() == OrderStatus.Unknown) return true;
+		return false;
+	}
 	
 	@Override
 	public String toString() {
@@ -137,10 +165,12 @@ public class IBOrder {
 		sb.append('/');
 		sb.append(StringUtils.rightPad("" + order.totalQuantity(), 8));
 		
-		if (extStatus == null)
+		if (extStatus != null)
+			sb.append(StringUtils.rightPad(extStatus, 16));
+		else if (orderState != null)
 			sb.append(StringUtils.rightPad(orderState.status().toString(), 16));
 		else
-			sb.append(StringUtils.rightPad(extStatus, 16));
+			sb.append(StringUtils.rightPad("---", 16));
 
 		sb.append(StringUtils.rightPad("" + order.permId(), 12));
 		sb.append(StringUtils.rightPad("[" + order.orderId() + "]", 6));
@@ -175,14 +205,14 @@ public class IBOrder {
 			j.put("T", "sell");
 		else
 			errWithTrace("Unknown order action " + order.action());
-		j.put("s", order.totalQuantity());
+		j.put("ttl_qty", order.totalQuantity());
 		j.put("p", order.lmtPrice());
 		if (avgFillPrice == null)
 			j.put("avg_price", order.lmtPrice());
 		else
 			j.put("avg_price", avgFillPrice);
-		j.put("executed", order.filledQuantity());
-		j.put("remained", order.totalQuantity()-order.filledQuantity());
+		j.put("executed_qty", order.filledQuantity());
+		j.put("remained_qty", order.totalQuantity()-order.filledQuantity());
 		j.put("status", extStatus == null ? orderState.status().toString() : extStatus);
 		// created time missing, default 2000-01-01 00:00:00
 		// suggest using orderRef to store client_oid+timestamp when created.
@@ -196,6 +226,13 @@ public class IBOrder {
 		return j;
 	}
 	
-	public String omsId() { return ""+order.permId(); }
-	public String omsClientOID() { return null; }
+	public String omsId() {
+		if (order.permId() == 0) return null;
+		return ""+order.permId();
+	}
+	public String omsClientOID() {
+		String orderRef = order.orderRef();
+		if (orderRef != null && orderRef.startsWith("uranus_")) return orderRef;
+		return null;
+	}
 }
