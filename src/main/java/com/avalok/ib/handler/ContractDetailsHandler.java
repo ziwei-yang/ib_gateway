@@ -31,7 +31,8 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		Collection<IBContract> contracts = KNOWN_CONTRACTS.values();
 		IBContract result = null;
 		for (IBContract _ibc : contracts) {
-			if (ibc.matchFullDetails(_ibc)) {
+			// Don't fill with those SMART exchange contract
+			if (_ibc.exchange().equals("SMART") == false && ibc.matchFullDetails(_ibc)) {
 				if (result == null)
 					result = _ibc;
 				else if (ibc.shownName() == null)
@@ -67,6 +68,12 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			QUERY_HIS.put(key, System.currentTimeMillis());
 			warn("--> Auto query contract details:" + key);
 			GW_CONTROLLER.queryContractList(ibc);
+			if (ibc.exchange() != null && ibc.exchange().equals("SMART")) {
+				IBContract ibc2 = new IBContract(ibc);
+				ibc2.exchange(null);
+				warn("--> Auto query contract details:" + key.replace("SMART", "???"));
+				GW_CONTROLLER.queryContractList(ibc2);
+			}
 		}
 	}
 

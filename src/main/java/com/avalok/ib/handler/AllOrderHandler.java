@@ -80,10 +80,20 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	 * Also publish at channel "URANUS:"+ibc.exchange()+":"+o.account()+":O_channel"
 	 */
 	private void writeOMS(Jedis t, IBOrder o) {
+		// This SMART exchange would make a wrong OMS hashmap name
+		// Make real OMS hashmap data missing.
+		IBContract ibc = o.contract;
+		if (ibc.exchange().equals("SMART")) {
+			IBOrder real_o = o.cloneWithRealExchange();
+			if (real_o != null) {
+				o = real_o;
+				ibc = o.contract;
+			}
+		}
+
 		String timeStr = "" + System.currentTimeMillis();
 		JSONObject j = o.toOMSJSON();
 		String jstr = JSON.toJSONString(j);
-		IBContract ibc = o.contract;
 		JSONObject pubJ = new JSONObject();
 		String hmap = "URANUS:"+ibc.exchange()+":"+o.account()+":O:"+ibc.pair();
 		t.hdel(hmap, "0"); // Clear historical remained trash, could delete this after stable version released.

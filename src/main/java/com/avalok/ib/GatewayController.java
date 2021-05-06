@@ -229,12 +229,24 @@ public class GatewayController extends BaseIBController {
 		// Contract detail cache does not need to be reset, always not changed.
 		orderCacheHandler.resetStatus();
 		
-		// Then subscribe data.
+		// Then subscribe balance and data.
 		subscribeAccountMV();
-		refreshLiveOrders();
-		refreshCompletedOrders();
 		subscribeTradeReport();
 		restartMarketData();
+
+		log("_postConnected delay 3 seconds to refresh orders");
+		// To have enough contract data to replace 'SMART' exchange
+		// Delay to subscribe order snapshot
+		new Timer("GatewayControllerDelayTask _postConnected()").schedule(new TimerTask() {
+			@Override
+			public void run() {
+				if (isConnected()) {
+					log("_postConnected : refresh orders");
+					refreshLiveOrders();
+					refreshCompletedOrders();
+				}
+			}
+		}, 3000);
 	}
 
 	@Override
@@ -364,7 +376,8 @@ public class GatewayController extends BaseIBController {
 			break;
 		default:
 			super.message(id, errorCode, errorMsg);
-			Redis.pub(ackChannel, j);
+			if (super.latestMsgIsOkay == false)
+				Redis.pub(ackChannel, j);
 			break;
 		}
 	}

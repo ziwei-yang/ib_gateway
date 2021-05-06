@@ -19,6 +19,50 @@ public class IBOrder {
 	protected OrderState orderState;
 	boolean toBePlaced = false;
 	/**
+	 * Clone
+	 */
+	public IBOrder(IBOrder ibo) {
+		contract = ibo.contract;
+		order = ibo.order;
+		orderState = ibo.orderState;
+		toBePlaced = ibo.toBePlaced;
+		filled = ibo.filled;
+		remaining = ibo.remaining;
+		avgFillPrice = ibo.avgFillPrice;
+		lastFillPrice = ibo.lastFillPrice;
+		mktCapPrice = ibo.mktCapPrice;
+		whyHeld = ibo.whyHeld;
+		statusFilled = ibo.statusFilled;
+		extStatus = ibo.extStatus;
+		extMsg = ibo.extMsg;
+	}
+	
+	/**
+	 * Deep clone IBOrder with real exchange instead of SMART 
+	 * @return
+	 */
+	public IBOrder cloneWithRealExchange() {
+		IBOrder o = new IBOrder(this);
+		IBContract ibc = o.contract;
+		if (ibc.exchange().equals("SMART")) {
+			IBContract ibcWithRealExchange = new IBContract(ibc);
+			ibcWithRealExchange.exchange(null);
+			if (ContractDetailsHandler.fillIBContract(ibcWithRealExchange)) {
+				String realExchange = ibcWithRealExchange.exchange();
+				// Clone an IBOrder with real exchange.
+				ibc = ibcWithRealExchange;
+				o = new IBOrder(o);
+				o.contract = ibc;
+				log("Auto replace exchange SMART with " + realExchange + "\n" + o);
+			} else {
+				err("Could not find real exchange for\n" + this);
+				return null;
+			}
+		}
+		return o;
+	}
+	
+	/**
 	 * Build new order to place
 	 */
 	public IBOrder(Contract _contract, Order _order) {

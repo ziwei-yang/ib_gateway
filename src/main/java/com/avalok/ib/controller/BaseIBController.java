@@ -268,9 +268,10 @@ public abstract class BaseIBController implements IConnectionHandler {
 	// Unknown message will be suppressed.
 	public int lastAckErrorCode = 0, lastAckErrorID = 0;
 	public String lastAckErrorMsg = "";
+	public boolean latestMsgIsOkay = false;
 	@Override
 	public void message(int id, int errorCode, String errorMsg) {
-		// TODO need error code reference webpage URL.
+		latestMsgIsOkay = false;
 		switch (errorCode) {
 			case 200: // No security definition has been found for the request
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
@@ -317,17 +318,21 @@ public abstract class BaseIBController implements IConnectionHandler {
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 			case 2104: // Market data farm connection is OK
+				latestMsgIsOkay = true;
 				break;
 			case 2105: // HMDS data farm connection is broken
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
 				break;
 			case 2106: // HMDS data farm connection is OK
+				latestMsgIsOkay = true;
 				break;
 			case 2107: // HMDS data farm connection is inactive but should be available upon demand.hthmds
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
+				latestMsgIsOkay = true;
 				break;
 			case 2108: // Market data farm connection is inactive but should be available upon demand.usfarm
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
+				latestMsgIsOkay = true;
 				break;
 			case 2110: // Connectivity between Trader Workstation and server is broken. It will be restored automatically.
 				log("id:" + id + ", code:" + errorCode + ", msg:" + errorMsg);
@@ -335,6 +340,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 				// twsDis_connect(); // Sometimes it wont be restored automatically. WTF!
 				break;
 			case 2158: // Sec-def data farm connection is OK:secdefhk
+				latestMsgIsOkay = true;
 				break;
 			default:
 				if (lastAckErrorID != id || lastAckErrorCode != errorCode || lastAckErrorMsg.equals(errorMsg) == false)
