@@ -235,8 +235,12 @@ public abstract class BaseIBController implements IConnectionHandler {
 		_connect();
 	}
 	
-	protected final List<String> accList = new ArrayList<String>();
-
+	protected final List<String> accList = new ArrayList<>();
+	public List<String> accountList() {
+		List<String> ret = new ArrayList<>();
+		ret.addAll(accList);
+		return ret;
+	}
 	@Override
 	public void accountList(List<String> list) {
 		info("<-- account list: " + JSON.toJSONString(list));

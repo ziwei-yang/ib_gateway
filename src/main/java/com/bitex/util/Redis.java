@@ -82,4 +82,12 @@ public class Redis {
 			}
 		});
 	}
+	public static void del(String k) {
+		exec(new Consumer<Jedis>() {
+			@Override
+			public void accept(Jedis t) {
+				t.del(k);
+			}
+		});
+	}
 }

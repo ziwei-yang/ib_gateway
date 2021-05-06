@@ -53,6 +53,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	private final GatewayController _ibController;
 	public final String _twsName;
 	protected OrderCache _allOrders = new OrderCache();
+	protected static ConcurrentHashMap<String, String> KNOWN_EXCHANGES = new ConcurrentHashMap<>();
 	public AllOrderHandler(GatewayController ibController) {
 		_ibController = ibController;
 		_twsName = ibController.name();
@@ -67,6 +68,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	}
 	
 	public void writeToCacheAndOMS(IBOrder o) {
+		KNOWN_EXCHANGES.put(o.contract.exchange(), o.contract.exchange());
 		_allOrders.recOrder(o);
 		if (!_omsInit) return; // Don't hurry to write until _omsInit
 		Redis.exec(new Consumer<Jedis>() {
@@ -120,8 +122,15 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 
 	public void teardownOMS(String reason) {
 		err("Tear down OMS, reason " + reason);
-		sleep (300); // TODO
-		err("Tear down OMS finished TODO");
+		String[] exchanges = KNOWN_EXCHANGES.values().toArray(new String[0]);
+		for (String acc : _ibController.accountList()) {
+			for (String ex: exchanges) {
+				String k = "URANUS:"+ex+":"+acc+":OMS";
+				info("Mark OMS stopped " + k);
+				Redis.del(k);
+			}
+		}
+		err("Tear down OMS finished");
 	}
 	
 	////////////////////////////////////////////////////////////////
@@ -323,9 +332,18 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 				int ct = 1;
 				for(IBOrder o : orders) {
 					writeOMS(r, o);
+					KNOWN_EXCHANGES.put(o.contract.exchange(), o.contract.exchange());
 					ct += 1;
 				}
 				info("OMS init with " + ct + "  orders");
+				String[] exchanges = KNOWN_EXCHANGES.values().toArray(new String[0]);
+				for (String acc : _ibController.accountList()) {
+					for (String ex: exchanges) {
+						String k = "URANUS:"+ex+":"+acc+":OMS";
+						info("Mark OMS running " + k);
+						Redis.set(k, "1");
+					}
+				}
 			}
 		});
 	}
