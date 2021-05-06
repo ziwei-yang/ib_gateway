@@ -209,6 +209,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	 */
 	@Override
 	public void handle(int orderId, int errorCode, String errorMsg) {
+		if (orderId >= 10000000 ) // the orderId means API reqId
+			return;
 		boolean process = false;
 		IBOrder o = null;
 		if (_processingOrderId != null && _processingOrderId == orderId) {
@@ -219,7 +221,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			if (o != null) process = true;
 		}
 		if (! process) {
-			err("<-- can't find order [" + orderId + "]:" + errorCode + "," + errorMsg);
+			if (orderId != -1) // Very common server message ID
+				err("<-- can't find order [" + orderId + "]:" + errorCode + "," + errorMsg);
 			return;
 		}
 		JSONObject j = new JSONObject();
