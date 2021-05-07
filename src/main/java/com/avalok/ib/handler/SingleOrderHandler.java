@@ -70,10 +70,21 @@ public class SingleOrderHandler implements IOrderHandler {
 				_order.setCancelled(errorMsg);
 				_orderCacheHandler.writeToCacheAndOMS(_order);
 				break;
+			case 10147: // OrderId 51 that needs to be cancelled is not found.
+				_order.setCancelled(errorMsg);
+				_orderCacheHandler.writeToCacheAndOMS(_order);
+			case 10148: // OrderId 51 that needs to be cancelled cannot be cancelled, state: Cancelled.
+				_order.setCancelled(errorMsg);
+				_orderCacheHandler.writeToCacheAndOMS(_order);
+				break;
+			case 10198: // Order bound is rejected: No such order
+				_order.setCancelled(errorMsg);
+				_orderCacheHandler.writeToCacheAndOMS(_order);
+				break;
 			default:
 				log(_order);
 				// Should be some kind of error, let clients know.
-				err("<-- broadcast error for order [" + _order.omsClientOID() + "]\norder id [" + orderId + "]:" + errorCode + "," + errorMsg);
+				err("<-- broadcast unknown error for order [" + _order.omsClientOID() + "]\norder id [" + orderId + "]:" + errorCode + "," + errorMsg);
 				_ibController.ack(j);
 				printMsg = false;
 				break;

@@ -177,7 +177,7 @@ public class IBApiController {
 	}
 	public void cancelOrder(int orderId) {
 		twsAPIRateControl();
-		recordOperationHistory("cancelOrder");
+		recordOperationHistory("cancelOrder " + orderId);
 		_api.cancelOrder(orderId);
 	}
 	public void cancelAllOrders() {

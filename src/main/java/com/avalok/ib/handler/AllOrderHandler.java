@@ -102,7 +102,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		if (o.permId() == 0) {
 			// If order is alive, permId will be added soon
 			// If order is dead, other reason should be sent from ack channel.
-			log("Skip writing alive or unknown status order, permId is not assigned");
+			log("Skip writing order [" + o.orderId() + "], permId is not assigned");
 			return;
 		}
 		if (o.omsId() != null) {
@@ -255,6 +255,14 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			o.setCancelled(errorMsg);
 			writeToCacheAndOMS(o);
 			break;
+		case 10147: // OrderId 51 that needs to be cancelled is not found.
+			o.setCancelled(errorMsg);
+			writeToCacheAndOMS(o);
+			break;
+		case 10148: // OrderId 51 that needs to be cancelled cannot be cancelled, state: Cancelled.
+			o.setCancelled(errorMsg);
+			writeToCacheAndOMS(o);
+			break;
 		case 10198: // Order bound is rejected: No such order
 			o.setCancelled(errorMsg);
 			writeToCacheAndOMS(o);
@@ -359,6 +367,7 @@ class OrderCache {
 	void recOrder(IBOrder o) {
 		_orderByPermId.put(o.permId(), o);
 		_orderById.put(o.orderId(), o);
+		// errWithTrace("recOrder " + o.permId() + " - " + o.orderId());
 	}
 	IBOrder byId(int id) { return _orderById.get(id); }
 	IBOrder byPermId(int permId) { return _orderByPermId.get(permId); }
