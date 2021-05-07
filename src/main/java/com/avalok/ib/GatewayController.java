@@ -181,20 +181,22 @@ public class GatewayController extends BaseIBController {
 	////////////////////////////////////////////////////////////////
 	// Order actions
 	////////////////////////////////////////////////////////////////
-	protected int placeOrder(IBOrder order) {
+	protected int placeOrder(IBOrder order) throws Exception {
+		if (order.omsClientOID() == null)
+			throw new Exception("Abort placing order without OMS client_oid, no orderRef?");
 		_apiController.placeOrModifyOrder(order.contract, order.order, new SingleOrderHandler(this, orderCacheHandler, order));
 		return _apiController.lastReqId();
 	}
-	protected int cancelOrder(int permId) {
-		IBOrder order = orderCacheHandler.orderByPermId(permId);
+	protected int cancelOrder(String omsId) {
+		IBOrder order = orderCacheHandler.orderByOMSId(omsId);
 		if (order == null) {
-			err("Abort order cancelling, no order by permId " + permId);
+			err("Abort order cancelling, no order by oms id " + omsId);
 			return 0;
 		} else if (order.orderId() == 0) {
-			err("Abort order cancelling, invalid order id 0 by permId " + permId);
+			err("Abort order cancelling, invalid order id 0 by omsId " + omsId);
 			return 0;
 		}
-		log("Find order by permId " + permId + " cancel " + order.orderId() + "\n" + order.toString());
+		log("Find order by oms id " + omsId + " cancel " + order.orderId() + "\n" + order.toString());
 		_apiController.cancelOrder(order.orderId());
 		return _apiController.lastReqId();
 	}
@@ -288,7 +290,7 @@ public class GatewayController extends BaseIBController {
 					apiReqId = placeOrder(new IBOrder(j.getJSONObject("iborder")));
 					break;
 				case "CANCEL_ORDER":
-					apiReqId = cancelOrder(j.getInteger("permId"));
+					apiReqId = cancelOrder(j.getString("omsId"));
 					break;
 				case "CANCEL_ALL":
 					apiReqId = cancelAll();

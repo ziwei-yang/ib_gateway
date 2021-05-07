@@ -258,8 +258,13 @@ public class IBOrder {
 		else if (!contract.isFullDetailed())
 			errWithTrace("Should not call toOMSJSON() when contract has no full detail");
 		JSONObject j = new JSONObject();
-		j.put("i", ""+order.permId());
-		// j.put("client_oid", order.orderRef()); // suggest using orderRef to store client_oid+timestamp when created
+		
+		j.put("permId", ""+order.permId());
+		j.put("orderRef", order.orderRef());
+		
+		j.put("client_oid", omsClientOID());
+		j.put("i", omsId());
+		
 		j.put("pair", contract.pair());
 		if (order.action() == Action.BUY)
 			j.put("T", "buy");
@@ -283,18 +288,35 @@ public class IBOrder {
 		j.put("orderType", order.orderType()); // LMT
 		j.put("tif", order.tif()); // LMT
 		
-		j.put("orderRef", order.orderRef());
 		j.put("extMsg", extMsg);
 		return j;
 	}
-	
+
 	public String omsId() {
+		if (omsClientOID() != null) {
+			// suggest using orderRef to store client_oid+timestamp when created with API
+			return omsClientOID();
+		} else if (omsAltId() != null){
+			// For those non-API orders.
+			return omsAltId();
+		} else {
+			errWithTrace("Should not call toOMSJSON() when order has no any ID");
+			return null;
+		}
+	}
+	
+	public String omsAltId() {
+		// If order has customized api compatiable ID, don't return.
+		if (omsClientOID() != null) return null;
+		// alternative ID is permId, if assigned.
 		if (order.permId() == 0) return null;
 		return ""+order.permId();
 	}
 	public String omsClientOID() {
+		// suggest using orderRef to store client_oid+timestamp when created with API
 		String orderRef = order.orderRef();
 		if (orderRef != null && orderRef.startsWith("uranus_")) return orderRef;
+		if (orderRef != null && orderRef.startsWith("api_")) return orderRef;
 		return null;
 	}
 }

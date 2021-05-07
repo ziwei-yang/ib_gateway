@@ -63,8 +63,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	// Cache utilities
 	////////////////////////////////////////////////////////////////
 	
-	public IBOrder orderByPermId(int permId) {
-		return _allOrders.byPermId(permId);
+	public IBOrder orderByOMSId(String id) {
+		return _allOrders.byOMSId(id);
 	}
 	
 	public void writeToCacheAndOMS(IBOrder o) {
@@ -98,24 +98,17 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		String jstr = JSON.toJSONString(j);
 		JSONObject pubJ = new JSONObject();
 		String hmap = "URANUS:"+ibc.exchange()+":"+o.account()+":O:"+ibc.pair();
+		String hmapShort = "URANUS:"+ibc.exchange()+":"+o.account()+":O:";
 		t.hdel(hmap, "0"); // Clear historical remained trash, could delete this after stable version released.
-		if (o.permId() == 0) {
-			// If order is alive, permId will be added soon
-			// If order is dead, other reason should be sent from ack channel.
-			log("Skip writing order [" + o.orderId() + "], permId is not assigned");
-			return;
-		}
-		if (o.omsId() != null) {
-			log(">>> OMS " + hmap + " / " + o.omsId());
-			t.hset(hmap, o.omsId(), jstr);
-			pubJ.put(o.omsId(), jstr);
-		}
 		if (o.omsClientOID() != null) {
-			log(">>> OMS " + hmap + " / " + o.omsClientOID());
+			log(">>> OMS " + hmapShort + " / " + o.omsClientOID() + "\n" + o);
 			t.hset(hmap, o.omsClientOID(), jstr);
 			pubJ.put(o.omsClientOID(), jstr);
+		} else if (o.omsAltId() != null) {
+			log(">>> OMS " + hmapShort + " / " + o.omsAltId() + "\n" + o);
+			t.hset(hmap, o.omsAltId(), jstr);
+			pubJ.put(o.omsAltId(), jstr);
 		}
-		log(o);
 		t.hset(hmap, "t", timeStr); // Mark latest updated timestamp.
 		t.publish("URANUS:"+ibc.exchange()+":"+o.account()+":O_channel", JSON.toJSONString(pubJ));
 	}
@@ -358,18 +351,18 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 }
 
 class OrderCache {
-	private Map<Integer, IBOrder> _orderByPermId = new ConcurrentHashMap<>();
+	private Map<String, IBOrder> _orderByOMSId = new ConcurrentHashMap<>();
 	private Map<Integer, IBOrder> _orderById = new ConcurrentHashMap<>();
 	OrderCache() {}
 	void recOrders(IBOrder[] list) {
 		for (IBOrder o : list) recOrder(o);
 	}
 	void recOrder(IBOrder o) {
-		_orderByPermId.put(o.permId(), o);
+		_orderByOMSId.put(o.omsId(), o);
 		_orderById.put(o.orderId(), o);
 		// errWithTrace("recOrder " + o.permId() + " - " + o.orderId());
 	}
 	IBOrder byId(int id) { return _orderById.get(id); }
-	IBOrder byPermId(int permId) { return _orderByPermId.get(permId); }
-	Collection<IBOrder> orders() { return _orderByPermId.values(); }
+	IBOrder byOMSId(String id) { return _orderByOMSId.get(id); }
+	Collection<IBOrder> orders() { return _orderByOMSId.values(); }
 }
