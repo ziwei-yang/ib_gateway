@@ -68,7 +68,15 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 	}
 	
 	public void writeToCacheAndOMS(IBOrder o) {
-		KNOWN_EXCHANGES.put(o.contract.exchange(), o.contract.exchange());
+		String ex = o.contract.exchange();
+		if (KNOWN_EXCHANGES.containsKey(ex) == false) { // New exchange order received, mark its OMS status.
+			KNOWN_EXCHANGES.put(ex, ex);
+			for (String acc : _ibController.accountList()) {
+				String k = "URANUS:"+ex+":"+acc+":OMS";
+				info("Mark OMS started " + k);
+				Redis.del(k);
+			}
+		}
 		_allOrders.recOrder(o);
 		if (!_omsInit) return; // Don't hurry to write until _omsInit
 		Redis.exec(new Consumer<Jedis>() {
