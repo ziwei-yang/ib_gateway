@@ -151,6 +151,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	// tickString() tickType LAST_TIMESTAMP VALUE: 1620015539
 	// tickPrice() tickType LAST price 58280.0
 	// tickSize() tickType LAST_SIZE size 1
+	// tickSize() tickType LAST_SIZE size 2 (same price, multiple trades)
 	// tickPrice() tickType LAST price 59120.0 (if have more trade at same time)
 	// tickSize() tickType LAST_SIZE size 1 (if have more trade at same time)
 	/////////////////////////////////////////////////////
@@ -161,7 +162,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	private void recordLastTrade() {
 		if (tickDataInited == false)
 			return;
-		if (lastTickPrice == null || lastTickSize == null) {
+		if (lastTickPrice == null) {
 			err("Call recordLastTrade() with incompleted data " + _contract.shownName() +
 					" lastTickPrice " + lastTickPrice + " lastTickSize " + lastTickSize);
 			return;
@@ -189,7 +190,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		switch (tickType) {
 		case LAST_TIMESTAMP:
 			lastTickTime = Long.parseLong(value + "000");
-			lastTickPrice = null;
+			// lastTickPrice = null; // Could be reused by next tick
 			lastTickSize = null;
 			break;
 		default:
