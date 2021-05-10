@@ -106,6 +106,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 		String jstr = JSON.toJSONString(j);
 		JSONObject pubJ = new JSONObject();
 		String hmap = "URANUS:"+ibc.exchange()+":"+o.account()+":O:"+ibc.pair();
+		String pubChannel = "URANUS:"+ibc.exchange()+":"+o.account()+":O_channel";
 		String hmapShort = "URANUS:"+ibc.exchange()+":"+o.account()+":O:";
 		t.hdel(hmap, "0"); // Clear historical remained trash, could delete this after stable version released.
 		if (o.omsClientOID() != null) {
@@ -118,7 +119,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			pubJ.put(o.omsAltId(), jstr);
 		}
 		t.hset(hmap, "t", timeStr); // Mark latest updated timestamp.
-		t.publish("URANUS:"+ibc.exchange()+":"+o.account()+":O_channel", JSON.toJSONString(pubJ));
+		t.publish(pubChannel, JSON.toJSONString(pubJ));
 	}
 
 	public void teardownOMS(String reason) {
