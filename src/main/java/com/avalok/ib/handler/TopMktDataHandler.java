@@ -171,9 +171,9 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		// Guess last trade side by price difference.
 		if (bidPrice != null && askPrice != null) {
 			if (Math.abs(bidPrice-lastTickPrice) < Math.abs(askPrice-lastTickPrice))
-				lastTrade.put("T", "BUY");
-			else
 				lastTrade.put("T", "SELL");
+			else
+				lastTrade.put("T", "BUY");
 		} else
 			lastTrade.put("T", "BUY");
 		lastTrade.put("p", lastTickPrice);
