@@ -19,6 +19,7 @@ import static com.bitex.util.DebugUtil.*;
  * Reuse the broadcast and internal cache structure from DeepMktDataHandler
  */
 public class TopMktDataHandler implements ITopMktDataHandler{
+	protected boolean _debug = false;
 	public final int max_depth = 1;
 	protected IBContract _contract;
 	protected final double multiplier;
@@ -32,7 +33,9 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 
 	protected final JSONArray newTicksData = new JSONArray();
 	protected final JSONArray newTicks = new JSONArray();
-	protected boolean tickDataInited = false; // Wait until tickSnapshotEnd()
+	// Wait until tickSnapshotEnd(), This function suddenly does not work any more. 20200514
+	// protected boolean tickDataInited = false;
+	protected boolean tickDataInited = true;
 	
 	private Consumer<Jedis> broadcastTopLambda;
 	private Consumer<Jedis> broadcastTickLambda;
@@ -57,8 +60,12 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 					topDataSnapshot.set(2, System.currentTimeMillis());
 					// Dont do this when same depth handler is working.
 					Long depthT = DeepMktDataHandler.CHANNEL_TIME.get(publishODBKChannel);
-					if (depthT == null || depthT < System.currentTimeMillis() - 1000)
+					if (depthT == null || depthT < System.currentTimeMillis() - 1000) {
+						if (_debug)
+							warn("Publish to " + publishODBKChannel);
 						t.publish(publishODBKChannel, JSON.toJSONString(topDataSnapshot));
+					} else if (_debug)
+						warn("Dont publish to " + publishODBKChannel);
 				}
 			};
 		}
@@ -72,6 +79,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			broadcastTickLambda = new Consumer<Jedis>() {
 				@Override
 				public void accept(Jedis t) {
+					if (_debug)
+						warn("Publish to " + publishTickChannel);
 					t.publish(publishTickChannel, JSON.toJSONString(newTicksData));
 				}
 			};
@@ -83,6 +92,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	Double bidPrice, askPrice; // To determine last trade side
 	@Override
 	public void tickPrice(TickType tickType, double price, TickAttrib attribs) {
+		if (_debug)
+			info(_contract.shownName() + " tickPrice() tickType " + tickType + " price " + price + " attribs " + attribs);
 		switch (tickType) {
 		case BID:
 			bidPrice = price;
@@ -115,6 +126,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 
 	@Override
 	public void tickSize(TickType tickType, int size) {
+		if (_debug)
+			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 		switch (tickType) {
 		case BID_SIZE:
 			topBids[0].put("s", size);
@@ -141,7 +154,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		case HALTED:
 			break;
 		default:
-			info("tickSize() tickType " + tickType + " size " + size);
+			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 			break;
 		}
 	}
@@ -155,16 +168,16 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	// tickPrice() tickType LAST price 59120.0 (if have more trade at same time)
 	// tickSize() tickType LAST_SIZE size 1 (if have more trade at same time)
 	/////////////////////////////////////////////////////
-	private Long lastTickTime = null;
+	private Long lastTickTime = 0l;
 	private Double lastTickPrice = null;
 	private Integer lastTickSize = null;
 	private JSONObject lastTrade;
 	private void recordLastTrade() {
 		if (tickDataInited == false)
 			return;
-		if (lastTickPrice == null) {
-			err("Call recordLastTrade() with incompleted data " + _contract.shownName() +
-					" lastTickPrice " + lastTickPrice + " lastTickSize " + lastTickSize);
+		if (lastTickPrice == null || lastTickPrice <= 0 || lastTickSize == null || lastTickSize <= 0) {
+			err(_contract.shownName() + " Call recordLastTrade() with incompleted data " + _contract.shownName() + " lastTickPrice "
+					+ lastTickPrice + " lastTickSize " + lastTickSize);
 			return;
 		}
 		lastTrade = new JSONObject();
@@ -187,6 +200,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 
 	@Override
 	public void tickString(TickType tickType, String value) {
+		if (_debug)
+			info(_contract.shownName() + " tickString() tickType " + tickType + " VALUE: " + value);
 		switch (tickType) {
 		case LAST_TIMESTAMP:
 			lastTickTime = Long.parseLong(value + "000");
@@ -194,13 +209,14 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			lastTickSize = null;
 			break;
 		default:
-			info("tickString() tickType " + tickType + " VALUE: " + value);
+			info(_contract.shownName() + " tickString() tickType " + tickType + " VALUE: " + value);
 			break;
 		}
 	}
 
 	@Override
 	public void tickSnapshotEnd() {
+		// This function suddenly does not work. 20200514
 		tickDataInited = true;
 		broadcastTop(true);
 	}
@@ -215,12 +231,17 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 
 	@Override
 	public void marketDataType(int marketDataType) {
-		info("marketDataType() " + marketDataType);
+		// https://interactivebrokers.github.io/tws-api/market_data_type.html
+		/*** Switch to live (1) frozen (2) delayed (3) or delayed frozen (4) ***/
+		if (marketDataType == 1)
+			info(_contract.shownName() + " marketDataType() " + marketDataType);
+		else
+			err(_contract.shownName() + " marketDataType() " + marketDataType);
 	}
 
 	@Override
 	public void tickReqParams(int tickerId, double minTick, String bboExchange, int snapshotPermissions) {
-		info("tickReqParams() tickerId " + tickerId + " minTick " + minTick + " bboExchange " + bboExchange + " snapshotPermissions " + snapshotPermissions);
+		info(_contract.shownName() + " tickReqParams() tickerId " + tickerId + " minTick " + minTick + " bboExchange " + bboExchange + " snapshotPermissions " + snapshotPermissions);
 	}
 
 }
