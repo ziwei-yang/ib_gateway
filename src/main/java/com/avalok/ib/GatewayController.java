@@ -195,7 +195,7 @@ public class GatewayController extends BaseIBController {
 		} else if (order.orderId() == 0) {
 			err("Abort order cancelling, invalid order id 0 by omsId " + omsId + " refreshing orders now");
 			// Might because some order updates is not received.
-			refreshLiveOrders()
+			refreshLiveOrders();
 			return 0;
 		}
 		log("Find order by oms id " + omsId + " cancel " + order.orderId() + "\n" + order.toString());
