@@ -23,6 +23,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	public final int max_depth = 1;
 	protected IBContract _contract;
 	protected final double multiplier;
+	protected final double marketDataSizeMultiplier;
 	protected final String publishODBKChannel; // Publish odbk to universal system
 	protected final String publishTickChannel; // Publish odbk to universal system
 	
@@ -47,7 +48,15 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			multiplier = 1;
 		else
 			multiplier = Double.parseDouble(contract.multiplier());
-		
+		while (true) {
+			JSONObject contractDetail = ContractDetailsHandler.findDetails(contract);
+			if (contractDetail != null) {
+				marketDataSizeMultiplier = contractDetail.getIntValue("mdSizeMultiplier");
+				break;
+			}
+			log("wait for contract details " + publishODBKChannel);
+			sleep(1);
+		}
 		// Pre-build snapshot
 		topDataSnapshot.add(topBids);
 		topDataSnapshot.add(topAsks);
@@ -125,7 +134,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	}
 
 	@Override
-	public void tickSize(TickType tickType, int size) {
+	public void tickSize(TickType tickType, int size_in_lot) {
+		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
 		if (_debug)
 			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 		switch (tickType) {
@@ -170,12 +180,12 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	/////////////////////////////////////////////////////
 	private Long lastTickTime = 0l;
 	private Double lastTickPrice = null;
-	private Integer lastTickSize = null;
+	private Double lastTickSize = null;
 	private JSONObject lastTrade;
 	private void recordLastTrade() {
-		if (tickDataInited == false)
-			return;
-		if (lastTickPrice == null || lastTickPrice <= 0 || lastTickSize == null || lastTickSize <= 0) {
+		if (tickDataInited == false) return;
+		if (lastTickSize == 0) return;
+		if (lastTickPrice == null || lastTickPrice <= 0 || lastTickSize == null || lastTickSize < 0) {
 			err(_contract.shownName() + " Call recordLastTrade() with incompleted data " + _contract.shownName() + " lastTickPrice "
 					+ lastTickPrice + " lastTickSize " + lastTickSize);
 			return;

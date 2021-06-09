@@ -24,6 +24,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 	public final int max_depth = 30;
 	protected IBContract _contract;
 	protected final double multiplier;
+	protected final double marketDataSizeMultiplier;
 	protected final String publishODBKChannel; // Publish odbk to universal system
 	
 	protected boolean depthInited = false; // Wait until all ASK/BID filled
@@ -40,6 +41,15 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 			multiplier = 1;
 		else
 			multiplier = Double.parseDouble(contract.multiplier());
+		while (true) {
+			JSONObject contractDetail = ContractDetailsHandler.findDetails(contract);
+			if (contractDetail != null) {
+				marketDataSizeMultiplier = contractDetail.getIntValue("mdSizeMultiplier");
+				break;
+			}
+			log("wait for contract details " + publishODBKChannel);
+			sleep(1);
+		}
 		// Pre-build snapshot
 		odbkSnapshot.add(bids);
 		odbkSnapshot.add(asks);
@@ -66,7 +76,7 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 			log(">>> broadcast depth " + publishODBKChannel);
 		_ct += 1;
 		
-		double size = size_in_lot * multiplier;
+		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
 		JSONObject o = null;
 		if (operation == DeepType.INSERT) {
 			depthInited = false;
