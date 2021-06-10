@@ -263,7 +263,9 @@ public class IBOrder {
 		j.put("orderRef", order.orderRef());
 		
 		j.put("client_oid", omsClientOID());
-		j.put("i", omsId());
+		String omsId = omsId();
+		if (omsId != null)
+			j.put("i", omsId);
 		
 		j.put("pair", contract.pair());
 		if (order.action() == Action.BUY)
@@ -300,7 +302,7 @@ public class IBOrder {
 			// For those non-API orders.
 			return omsAltId();
 		} else {
-			errWithTrace("Should not call toOMSJSON() when order has no any ID");
+			err("omsId not found, is this order placed mannually from TWS?\n" + this);
 			return null;
 		}
 	}

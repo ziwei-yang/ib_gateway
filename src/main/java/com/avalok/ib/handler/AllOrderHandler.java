@@ -367,7 +367,8 @@ class OrderCache {
 		for (IBOrder o : list) recOrder(o);
 	}
 	void recOrder(IBOrder o) {
-		_orderByOMSId.put(o.omsId(), o);
+		String omsId = o.omsId();
+		if (omsId != null) _orderByOMSId.put(o.omsId(), o);
 		_orderById.put(o.orderId(), o);
 		// errWithTrace("recOrder " + o.permId() + " - " + o.orderId());
 	}
