@@ -70,6 +70,9 @@ public class SingleOrderHandler implements IOrderHandler {
 				_order.setCancelled(errorMsg);
 				_orderCacheHandler.writeToCacheAndOMS(_order);
 				break;
+			case 399: // Order error: check them by message
+				if (errorMsg.contains("Warning: your order will not be placed at the exchange until "))
+					break; // This is okay.
 			case 10147: // OrderId 51 that needs to be cancelled is not found.
 				_order.setCancelled(errorMsg);
 				_orderCacheHandler.writeToCacheAndOMS(_order);

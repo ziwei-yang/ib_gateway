@@ -257,6 +257,9 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			o.setCancelled(errorMsg);
 			writeToCacheAndOMS(o);
 			break;
+		case 399: // Order error: check them by message
+			if (errorMsg.contains("Warning: your order will not be placed at the exchange until "))
+				break; // This is okay.
 		case 10147: // OrderId 51 that needs to be cancelled is not found.
 			o.setCancelled(errorMsg);
 			writeToCacheAndOMS(o);
