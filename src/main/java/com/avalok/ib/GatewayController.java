@@ -273,6 +273,7 @@ public class GatewayController extends BaseIBController {
 			final Long id = j.getLong("id");
 			info("<<< CMD " + id + " " + j.getString("cmd"));
 			String errorMsg = null;
+			String response = null; // Some commands could have response directly.
 			int apiReqId = 0;
 			try {
 				switch(j.getString("cmd")) {
@@ -297,6 +298,9 @@ public class GatewayController extends BaseIBController {
 				case "CANCEL_ALL":
 					apiReqId = cancelAll();
 					break;
+				case "ACCOUNT_LIST":
+					response = JSON.toJSONString(accList);
+					break;
 				default:
 					errorMsg = "Unknown cmd " + j.getString("cmd");
 					err(errorMsg);
@@ -313,6 +317,8 @@ public class GatewayController extends BaseIBController {
 				r.put("ibApiId", apiReqId);
 				if (errorMsg != null)
 					r.put("err", errorMsg);
+				if (response != null)
+					r.put("res", response);
 				Redis.pub(ackChannel, r);
 			}
 		}
