@@ -18,6 +18,7 @@ public class IBOrder {
 	// https://interactivebrokers.github.io/tws-api/order_submission.html#order_status
 	protected OrderState orderState;
 	boolean toBePlaced = false;
+	
 	/**
 	 * Clone
 	 */
@@ -87,6 +88,10 @@ public class IBOrder {
 		order.action(oj.getString("T").toUpperCase()); // BUY SELL
 		order.totalQuantity(oj.getDoubleValue("s"));
 		order.lmtPrice(oj.getDoubleValue("p"));
+		// Use whatIf=true to check trading rules and margin
+		// See https://interactivebrokers.github.io/tws-api/margin.html
+		if (oj.getBoolean("whatIf") != null)
+			order.whatIf(oj.getBoolean("whatIf"));
 		if (oj.containsKey("executed"))
 			order.filledQuantity(oj.getDoubleValue("executed"));
 		// Don't parse status, will get updates from IB after placing/modifying
@@ -289,6 +294,7 @@ public class IBOrder {
 		j.put("market", contract.exchange());
 		j.put("orderType", order.orderType()); // LMT
 		j.put("tif", order.tif()); // LMT
+		j.put("whatIf", order.whatIf()); // LMT
 		
 		j.put("extMsg", extMsg);
 		return j;
