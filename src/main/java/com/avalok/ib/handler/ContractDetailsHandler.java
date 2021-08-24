@@ -26,6 +26,8 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 	public static final Map<String, JSONObject> KNOWN_CONTRACT_DETAILS = new ConcurrentHashMap<>();
 	public static GatewayController GW_CONTROLLER = null;
 	public static final Map<String, Long> QUERY_HIS = new ConcurrentHashMap<>();
+	public static final ContractDetailsHandler instance = new ContractDetailsHandler();
+	private ContractDetailsHandler() {}
 
 	public static boolean fillIBContract(IBContract ibc) {
 		Collection<IBContract> contracts = KNOWN_CONTRACTS.values();
@@ -86,7 +88,20 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			Contract c = detail.contract();
 			IBContract ibc = new IBContract(c);
 			String shortName = new IBContract(c).shownName();
-			log("<-- contract detail " + shortName);
+			String marketRuleIds = detail.marketRuleIds();
+			log("<-- contract detail " + shortName + " , mkt rule list " + marketRuleIds);
+			if (marketRuleIds != null) {
+				for (String id : marketRuleIds.split(",")) {
+					int i = -1;
+					try {
+						i = Integer.parseInt(id);
+					} catch (Exception e) {
+						err("Unexpected market rule id " + id);
+						continue;
+					}
+					MarketRuleHandler.getMarketRule(i);
+				}
+			}
 			JSONObject json = writeDetail("IBGateway:Contract:"+shortName, detail);
 			KNOWN_CONTRACTS.put(shortName, ibc);
 			KNOWN_CONTRACT_DETAILS.put(shortName, json);

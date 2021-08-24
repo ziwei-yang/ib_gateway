@@ -15,6 +15,7 @@ import com.ib.controller.ApiController.IContractDetailsHandler;
 import com.ib.controller.ApiController.IDeepMktDataHandler;
 import com.ib.controller.ApiController.IHistoricalDataHandler;
 import com.ib.controller.ApiController.ILiveOrderHandler;
+import com.ib.controller.ApiController.IMarketRuleHandler;
 import com.ib.controller.ApiController.IOrderHandler;
 import com.ib.controller.ApiController.IPositionHandler;
 import com.ib.controller.ApiController.IRealTimeBarHandler;
@@ -84,7 +85,11 @@ public class IBApiController {
 		recordOperationHistory("disconnect");
 		_api.disconnect();
 	}
-
+	public void reqMarketRule(int marketRuleId, IMarketRuleHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("marketRule:" + marketRuleId);
+		_api.reqMarketRule(marketRuleId, handler);
+	}
 	public void reqAccountUpdates(boolean subscribe, String acctCode, IAccountHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqAccountUpdates:" + acctCode);

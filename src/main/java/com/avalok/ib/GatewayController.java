@@ -28,6 +28,7 @@ public class GatewayController extends BaseIBController {
 	private final String ackChannel;
 	public GatewayController() {
 		ContractDetailsHandler.GW_CONTROLLER = this;
+		MarketRuleHandler.GW_CONTROLLER = this;
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				orderCacheHandler.teardownOMS("Shutting down");
@@ -219,7 +220,11 @@ public class GatewayController extends BaseIBController {
 		return _apiController.lastReqId();
 	}
 	public int queryContractList(IBContract ibc) {
-		_apiController.reqContractDetails(ibc, new ContractDetailsHandler());
+		_apiController.reqContractDetails(ibc, ContractDetailsHandler.instance);
+		return _apiController.lastReqId();
+	}
+	public int queryMarketRule(int ruleId) {
+		_apiController.reqMarketRule(ruleId, MarketRuleHandler.instance);
 		return _apiController.lastReqId();
 	}
 
