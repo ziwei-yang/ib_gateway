@@ -107,11 +107,13 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		case BID:
 			bidPrice = price;
 			topBids[0].put("p", price);
+			if (topBids[0].getDouble("s") == null) break;
 			if (tickDataInited) broadcastTop(false);
 			break;
 		case ASK:
 			askPrice = price;
 			topAsks[0].put("p", price);
+			if (topAsks[0].getDouble("s") == null) break;
 			if (tickDataInited) broadcastTop(false);
 			break;
 		case LAST:
@@ -141,10 +143,12 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		switch (tickType) {
 		case BID_SIZE:
 			topBids[0].put("s", size);
+			if (topBids[0].getDouble("p") == null) break;
 			if (tickDataInited) broadcastTop(false);
 			break;
 		case ASK_SIZE:
 			topAsks[0].put("s", size);
+			if (topAsks[0].getDouble("p") == null) break;
 			if (tickDataInited) broadcastTop(false);
 			break;
 		case LAST_SIZE:
