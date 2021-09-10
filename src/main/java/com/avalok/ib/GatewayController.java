@@ -162,20 +162,11 @@ public class GatewayController extends BaseIBController {
 		boolean subscribe = true;
 		log("--> Req account mv default");
 		_apiController.reqAccountUpdates(subscribe, "", accountMVHandler);
-	}
-	
-	@Override
-	public void accountList(List<String> list) {
-		info("<-- account list: " + JSON.toJSONString(list));
-		if (accList != null) {
-			accList.clear();
-			accList.addAll(list);
-		}
-		boolean subscribe = true;
-		for (String account : accList) {
-			log("--> Req account mv " + account);
-			_apiController.reqAccountUpdates(subscribe, account, accountMVHandler);
-		}
+		if (accList != null)
+			for (String account : accList) {
+				log("--> Req account mv " + account);
+				_apiController.reqAccountUpdates(subscribe, account, accountMVHandler);
+			}
 	}
 	
 	////////////////////////////////////////////////////////////////
