@@ -2,6 +2,7 @@ package com.avalok.ib;
 
 import static com.bitex.util.DebugUtil.*;
 
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
@@ -157,10 +158,20 @@ public class GatewayController extends BaseIBController {
 //	}
 	
 	protected AccountMVHandler accountMVHandler = new AccountMVHandler();
-	protected void subscribeAccountMV() { // TODO Is this streaming updating?
+	protected void subscribeAccountMV() { // Is this streaming updating? Yes, with some latency 1~5s.
 		boolean subscribe = true;
-		String account = "";
-		_apiController.reqAccountUpdates(subscribe, account, accountMVHandler);
+		log("--> Req account mv default");
+		_apiController.reqAccountUpdates(subscribe, "", accountMVHandler);
+	}
+	
+	@Override
+	public void accountList(List<String> list) {
+		super.accountList(list);
+		boolean subscribe = true;
+		for (String account : accList) {
+			log("--> Req account mv " + account);
+			_apiController.reqAccountUpdates(subscribe, account, accountMVHandler);
+		}
 	}
 	
 	////////////////////////////////////////////////////////////////
