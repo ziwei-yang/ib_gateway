@@ -166,7 +166,11 @@ public class GatewayController extends BaseIBController {
 	
 	@Override
 	public void accountList(List<String> list) {
-		super.accountList(list);
+		info("<-- account list: " + JSON.toJSONString(list));
+		if (accList != null) {
+			accList.clear();
+			accList.addAll(list);
+		}
 		boolean subscribe = true;
 		for (String account : accList) {
 			log("--> Req account mv " + account);
