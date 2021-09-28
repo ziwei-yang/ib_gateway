@@ -74,7 +74,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			for (String acc : _ibController.accountList()) {
 				String k = "URANUS:"+ex+":"+acc+":OMS";
 				info("Mark OMS started " + k);
-				Redis.del(k);
+				Redis.set(k, "1");
 			}
 		}
 		_allOrders.recOrder(o);
@@ -117,6 +117,8 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			log(">>> OMS " + hmapShort + " / " + o.omsAltId() + "\n" + o);
 			t.hset(hmap, o.omsAltId(), jstr);
 			pubJ.put(o.omsAltId(), jstr);
+		} else {
+			warn(">>> OMS " + hmapShort + " / ????? skip order with no ID\n" + o);
 		}
 		t.hset(hmap, "t", timeStr); // Mark latest updated timestamp.
 		t.publish(pubChannel, JSON.toJSONString(pubJ));

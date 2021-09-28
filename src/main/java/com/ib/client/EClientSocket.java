@@ -94,6 +94,7 @@ public class EClientSocket extends EClient implements EClientMsgSink  {
 	        return;
 	    }
 	    try{
+	    	System.out.println("\t\tNew Socket connect to " + m_host); // DEBUG reconnect failed
 	        Socket socket = new Socket( m_host, port);
 	        eConnect(socket);
 	    }
