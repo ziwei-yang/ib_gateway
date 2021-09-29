@@ -160,7 +160,7 @@ public class IBOrder {
 		else if (order.permId() != _permId)
 			systemAbort("Inconsistent permId " + order.permId() + " - " + _permId);
 		if (order.parentId() == 0)
-			order.permId(_parentId);
+			order.parentId(_parentId);
 		else if (order.parentId() != _parentId)
 			systemAbort("Inconsistent _parentId " + order.parentId() + " - " + _parentId);
 		avgFillPrice = _avgFillPrice;
