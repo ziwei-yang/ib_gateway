@@ -78,7 +78,10 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			}
 		}
 		_allOrders.recOrder(o);
-		if (!_omsInit) return; // Don't hurry to write until _omsInit
+		if (!_omsInit) {
+			warn("_omsInit is false, don't hurry to write until _omsInit");
+			return;
+		}
 		Redis.exec(new Consumer<Jedis>() {
 			@Override
 			public void accept(Jedis r) { writeOMS(r, o); }
