@@ -201,11 +201,13 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 			int permId, int parentId, double lastFillPrice, 
 			int clientId, String whyHeld, double mktCapPrice) {
 		if (_processingOrderId != null &&_processingOrderId == orderId) {
-			// log in setStatus() already.
+			log("<-- orderStatus() _processingOrder orderId " + orderId + " permId " + permId);
+			// full log in setStatus() already.
 			_processingOrder.setStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
 			_recvOpenOrders.add(_processingOrder);
 			writeToCacheAndOMS(_processingOrder);
 		} else {
+			log("<-- orderStatus() search _allOrders orderId " + orderId + " permId " + permId);
 			// Search from alive_orders
 			IBOrder o = _allOrders.byId(orderId);
 			if (o == null) {
