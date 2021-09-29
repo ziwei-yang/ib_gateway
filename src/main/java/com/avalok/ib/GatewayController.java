@@ -160,12 +160,15 @@ public class GatewayController extends BaseIBController {
 	protected void subscribeAccountMV() { // Is this streaming updating? Yes, with some latency 1~5s.
 		boolean subscribe = true;
 		log("--> Req account mv default");
-		_apiController.reqAccountUpdates(subscribe, "", accountMVHandler);
-		if (accList != null)
+		if (accList != null) {
 			for (String account : accList) {
 				log("--> Req account mv " + account);
 				_apiController.reqAccountUpdates(subscribe, account, accountMVHandler);
 			}
+		} else {
+			log("--> Req account mv default");
+			_apiController.reqAccountUpdates(subscribe, "", accountMVHandler);
+		}
 	}
 	
 	////////////////////////////////////////////////////////////////
@@ -243,21 +246,27 @@ public class GatewayController extends BaseIBController {
 		// Contract detail cache does not need to be reset, always not changed.
 		orderCacheHandler.resetStatus();
 		
-		// Then subscribe balance and data.
-		subscribeAccountMV();
+		// Then subscribe market data.
 		subscribeTradeReport();
 		restartMarketData();
 
-		log("_postConnected delay 3 seconds to refresh orders");
+		log("_postConnected delay 3 seconds to subscribe MV and refresh orders");
 		// To have enough contract data to replace 'SMART' exchange
 		// Delay to subscribe order snapshot
 		new Timer("GatewayControllerDelayTask _postConnected()").schedule(new TimerTask() {
 			@Override
 			public void run() {
-				if (isConnected()) {
-					log("_postConnected : refresh orders");
-					refreshLiveOrders();
-					refreshCompletedOrders();
+				while (true) {
+					if (isConnected() && accList != null) {
+						subscribeAccountMV();
+						log("_postConnected : refresh alive and completed orders");
+						refreshLiveOrders();
+						refreshCompletedOrders();
+						break;
+					} else {
+						log("_postConnected : isConnected " + isConnected() + " accList null? " + (accList != null));
+						sleep(1000);
+					}
 				}
 			}
 		}, 3000);
