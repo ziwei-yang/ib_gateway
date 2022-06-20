@@ -218,6 +218,7 @@ public class AllOrderHandler implements ILiveOrderHandler,ICompletedOrdersHandle
 				return;
 			}
 			o.setStatus(orderId, status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
+
 			writeToCacheAndOMS(o);
 		}
 	}

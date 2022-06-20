@@ -157,7 +157,7 @@ public class GatewayController extends BaseIBController {
 //	}
 	
 	protected AccountMVHandler accountMVHandler = new AccountMVHandler();
-	protected void subscribeAccountMV() { // Is this streaming updating? Yes, with some latency 1~5s.
+	public void subscribeAccountMV() { // Is this streaming updating? Yes, with some latency 1~5s.
 		boolean subscribe = true;
 		log("--> Req account mv default");
 		if (accList != null) {
