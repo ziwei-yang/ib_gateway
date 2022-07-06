@@ -129,6 +129,34 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			break;
 		case HALTED:
 			break;
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+		// DELAYED types
+		case DELAYED_BID:
+			bidPrice = price;
+			topBids[0].put("p", price);
+			if (topBids[0].getDouble("s") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_ASK:
+			askPrice = price;
+			topAsks[0].put("p", price);
+			if (topAsks[0].getDouble("s") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_LAST:
+			// if have market data subscription only type LAST, don't have type DELAYED_LAST 
+			lastTickPrice = price;
+			// info(_contract.shownName() + " tickPrice() tickType " + tickType + " price " + price + " attribs " + attribs);
+			break;
+		case DELAYED_OPEN:
+			break;
+		case DELAYED_CLOSE:
+			break;
+		case DELAYED_LOW:
+			break;
+		case DELAYED_HIGH:
+			break;
 		default:
 			info(_contract.shownName() + " tickPrice() tickType " + tickType + " price " + price + " attribs " + attribs);
 			break;
@@ -167,6 +195,35 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			break;
 		case HALTED:
 			break;
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+		// DELAYED types
+		case DELAYED_BID_SIZE:
+			topBids[0].put("s", size);
+			if (topBids[0].getDouble("p") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_ASK_SIZE:
+			topAsks[0].put("s", size);
+			if (topAsks[0].getDouble("p") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_LAST_SIZE:
+			// if have market data subscription only type LAST, don't have type DELAYED_LAST_SIZE 
+			lastTickSize = size;
+			recordLastTrade();
+			// info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
+			break;
+		case DELAYED_VOLUME:
+			break;
+		case DELAYED_OPEN:
+			break;
+		case DELAYED_CLOSE:
+			break;
+		case DELAYED_LOW:
+			break;
+		case DELAYED_HIGH:
+			break;
 		default:
 			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 			break;
@@ -186,6 +243,12 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	private Double lastTickPrice = null;
 	private Double lastTickSize = null;
 	private JSONObject lastTrade;
+	
+	// private Long delayedLastTickTime = 0l;
+	// private Double delayedLastTickPrice = null;
+	// private Double delayedLastTickSize = null;
+	// private JSONObject delayedLastTrade;
+	
 	private void recordLastTrade() {
 		if (tickDataInited == false) return;
 		if (lastTickSize == 0) return;
@@ -211,7 +274,33 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		if (broadcastTickLambda != null)
 			Redis.exec(broadcastTickLambda);
 	}
-
+	
+	/*private void recordDelayedLastTrade() {
+		if (tickDataInited == false) return;
+		if (delayedLastTickSize == 0) return;
+		if (delayedLastTickPrice == null || delayedLastTickPrice <= 0 || delayedLastTickSize == null || delayedLastTickSize < 0) {
+			err(_contract.shownName() + " Call recordDelayedLastTrade() with incompleted data " + _contract.shownName() + " delayedLastTickPrice "
+					+ delayedLastTickPrice + " delayedLastTickSize " + delayedLastTickSize);
+			return;
+		}
+		delayedLastTrade = new JSONObject();
+		// Guess last trade side by price difference.
+		if (bidPrice != null && askPrice != null) {
+			if (Math.abs(bidPrice-delayedLastTickPrice) < Math.abs(askPrice-delayedLastTickPrice))
+				delayedLastTrade.put("T", "SELL");
+			else
+				delayedLastTrade.put("T", "BUY");
+		} else
+			delayedLastTrade.put("T", "BUY");
+		delayedLastTrade.put("p", delayedLastTickPrice);
+		delayedLastTrade.put("s", delayedLastTickSize);
+		delayedLastTrade.put("t", delayedLastTickTime);
+		newTicks.set(0, delayedLastTrade);
+		newTicksData.set(1, System.currentTimeMillis());
+		if (broadcastTickLambda != null)
+			Redis.exec(broadcastTickLambda);
+	}*/
+	
 	@Override
 	public void tickString(TickType tickType, String value) {
 		if (_debug)
@@ -220,6 +309,13 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		case LAST_TIMESTAMP:
 			lastTickTime = Long.parseLong(value + "000");
 			// lastTickPrice = null; // Could be reused by next tick
+			lastTickSize = null;
+			break;
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+		// DELAYED types
+		case DELAYED_LAST_TIMESTAMP:
+			lastTickTime = Long.parseLong(value + "000");
 			lastTickSize = null;
 			break;
 		default:

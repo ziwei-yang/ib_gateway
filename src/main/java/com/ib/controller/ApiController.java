@@ -495,6 +495,9 @@ public class ApiController implements EWrapper {
 
     	int reqId = m_reqId++;
     	m_topMktDataMap.put( reqId, handler);
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+    	reqMktDataType(MarketDataType.DELAYED);
     	m_client.reqMktData( reqId, contract, genericTickList, snapshot, regulatorySnapshot, Collections.emptyList() );
 		sendEOM();
     }
@@ -506,6 +509,9 @@ public class ApiController implements EWrapper {
     	int reqId = m_reqId++;
     	m_topMktDataMap.put( reqId, handler);
     	m_optionCompMap.put( reqId, handler);
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+    	reqMktDataType(MarketDataType.DELAYED);
     	m_client.reqMktData( reqId, contract, genericTickList, snapshot, regulatorySnapshot, Collections.emptyList() );
 		sendEOM();
     }
@@ -517,6 +523,9 @@ public class ApiController implements EWrapper {
     	int reqId = m_reqId++;
     	m_topMktDataMap.put( reqId, handler);
     	m_efpMap.put( reqId, handler);
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+    	reqMktDataType(MarketDataType.DELAYED);
     	m_client.reqMktData( reqId, contract, genericTickList, snapshot, regulatorySnapshot, Collections.emptyList() );
 		sendEOM();
     }
@@ -1457,6 +1466,9 @@ public class ApiController implements EWrapper {
 		int tickerId = m_reqId++;
 
 		m_tickNewsHandlerMap.put(tickerId, handler);
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+    	reqMktDataType(MarketDataType.DELAYED);
 		m_client.reqMktData(tickerId, contract, "mdoff,292", false, false, Collections.emptyList());
 		sendEOM();
 	}

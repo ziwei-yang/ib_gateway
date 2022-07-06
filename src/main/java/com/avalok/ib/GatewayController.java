@@ -107,6 +107,7 @@ public class GatewayController extends BaseIBController {
 		TopMktDataHandler handler = new TopMktDataHandler(contract, broadcastTop, broadcastTick);
 		// See <Generic tick required> at https://interactivebrokers.github.io/tws-api/tick_types.html
 		String genericTickList = "";
+
 		// Request snapshot, then updates
 		boolean snapshot = true, regulatorySnapshot = true;
 		_apiController.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
