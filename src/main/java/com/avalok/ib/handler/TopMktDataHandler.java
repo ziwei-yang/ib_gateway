@@ -95,7 +95,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			};
 		}
 	}
-	
+
 	public IBContract contract() { return _contract; }
 
 	Double bidPrice, askPrice; // To determine last trade side
@@ -243,11 +243,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	private Double lastTickPrice = null;
 	private Double lastTickSize = null;
 	private JSONObject lastTrade;
-	
-	// private Long delayedLastTickTime = 0l;
-	// private Double delayedLastTickPrice = null;
-	// private Double delayedLastTickSize = null;
-	// private JSONObject delayedLastTrade;
+
 	
 	private void recordLastTrade() {
 		if (tickDataInited == false) return;
@@ -274,33 +270,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 		if (broadcastTickLambda != null)
 			Redis.exec(broadcastTickLambda);
 	}
-	
-	/*private void recordDelayedLastTrade() {
-		if (tickDataInited == false) return;
-		if (delayedLastTickSize == 0) return;
-		if (delayedLastTickPrice == null || delayedLastTickPrice <= 0 || delayedLastTickSize == null || delayedLastTickSize < 0) {
-			err(_contract.shownName() + " Call recordDelayedLastTrade() with incompleted data " + _contract.shownName() + " delayedLastTickPrice "
-					+ delayedLastTickPrice + " delayedLastTickSize " + delayedLastTickSize);
-			return;
-		}
-		delayedLastTrade = new JSONObject();
-		// Guess last trade side by price difference.
-		if (bidPrice != null && askPrice != null) {
-			if (Math.abs(bidPrice-delayedLastTickPrice) < Math.abs(askPrice-delayedLastTickPrice))
-				delayedLastTrade.put("T", "SELL");
-			else
-				delayedLastTrade.put("T", "BUY");
-		} else
-			delayedLastTrade.put("T", "BUY");
-		delayedLastTrade.put("p", delayedLastTickPrice);
-		delayedLastTrade.put("s", delayedLastTickSize);
-		delayedLastTrade.put("t", delayedLastTickTime);
-		newTicks.set(0, delayedLastTrade);
-		newTicksData.set(1, System.currentTimeMillis());
-		if (broadcastTickLambda != null)
-			Redis.exec(broadcastTickLambda);
-	}*/
-	
+
 	@Override
 	public void tickString(TickType tickType, String value) {
 		if (_debug)
@@ -342,11 +312,11 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	@Override
 	public void marketDataType(int marketDataType) {
 		// https://interactivebrokers.github.io/tws-api/market_data_type.html
-		/*** Switch to live (1) frozen (2) delayed (3) or delayed frozen (4) ***/
+		// Switch to live (1) frozen (2) delayed (3) or delayed frozen (4)
 		if (marketDataType == 1)
 			info(_contract.shownName() + " marketDataType() " + marketDataType);
 		else
-			err(_contract.shownName() + " marketDataType() " + marketDataType);
+			warn(_contract.shownName() + " marketDataType() " + marketDataType);
 	}
 
 	@Override

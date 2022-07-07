@@ -121,11 +121,11 @@ public class IBApiController {
 		recordOperationHistory("reqTopMktData");
 		_api.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
     }
-//    public void reqOptionMktData(Contract contract, String genericTickList, boolean snapshot, boolean regulatorySnapshot, IOptHandler handler) {
-//		twsAPIRateControl();
-//		recordOperationHistory("reqOptionMktData");
-//		_api.reqOptionMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
-//    }
+    public void reqOptionMktData(Contract contract, String genericTickList, boolean snapshot, boolean regulatorySnapshot, IOptHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("reqOptionMktData");
+		_api.reqOptionMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+    }
     public void cancelTopMktData( ITopMktDataHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("cancelTopMktData");
