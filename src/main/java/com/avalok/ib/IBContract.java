@@ -49,6 +49,8 @@ public class IBContract extends Contract {
 				s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier();
 		} else if(secType() == SecType.OPT) {
 			s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier() + getRight() + strike();
+		} else if(secType() == SecType.BOND) {
+			s = String.valueOf(conid());
 		} else {
 			if (lastTradeDateOrContractMonth() == null || lastTradeDateOrContractMonth().length() == 0)
 				;

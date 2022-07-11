@@ -106,7 +106,7 @@ public class GatewayController extends BaseIBController {
 		if (isOptType && _optionTopTasks.get(jobKey) != null) {
 			log("Task dulicated, skip subscribing option top data " + jobKey);
 			return 0;
-		} else if(_topTasks.get(jobKey) != null) {
+		} else if(!isOptType && _topTasks.get(jobKey) != null) {
 			log("Task dulicated, skip subscribing top data " + jobKey);
 			return 0;
 		}
@@ -148,7 +148,7 @@ public class GatewayController extends BaseIBController {
 		if (isOptType && _optionTopTasks.get(jobKey) == null) {
 			err("Task not exist, skip canceling option top data " + jobKey);
 			return 0;
-		} else if (_topTasks.get(jobKey) == null) {
+		} else if (!isOptType && _topTasks.get(jobKey) == null) {
 			err("Task not exist, skip canceling top data " + jobKey);
 			return 0;
 		}

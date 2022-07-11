@@ -164,8 +164,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	}
 
 	@Override
-	public void tickSize(TickType tickType, int size_in_lot) {
-		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
+	public void tickSize(TickType tickType, int size) {
+//		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
 		if (_debug)
 			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 		switch (tickType) {
@@ -209,7 +209,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			if (tickDataInited) broadcastTop(false);
 			break;
 		case DELAYED_LAST_SIZE:
-			// if have market data subscription only type LAST, don't have type DELAYED_LAST_SIZE 
+			// if have market data subscription only type LAST, don't have type DELAYED_LAST_SIZE
 			lastTickSize = size;
 			recordLastTrade();
 			// info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
