@@ -241,7 +241,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	/////////////////////////////////////////////////////
 	private Long lastTickTime = 0l;
 	private Double lastTickPrice = null;
-	private Double lastTickSize = null;
+	private Integer lastTickSize = null;
 	private JSONObject lastTrade;
 
 	
