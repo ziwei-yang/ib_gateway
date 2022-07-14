@@ -295,7 +295,8 @@ public class IBOrder {
 		j.put("orderType", order.orderType()); // LMT
 		j.put("tif", order.tif()); // LMT
 		j.put("whatIf", order.whatIf()); // LMT
-		
+		j.put("secType", contract.secType());
+
 		j.put("extMsg", extMsg);
 		return j;
 	}

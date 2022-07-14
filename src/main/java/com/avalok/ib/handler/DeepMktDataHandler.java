@@ -68,15 +68,39 @@ public class DeepMktDataHandler implements IDeepMktDataHandler {
 	
 	public IBContract contract() { return _contract; }
 
+	private int fixSizeX10Bug(int size){
+		// From ib received "IBOND" depth size is wrong
+		// received depth size is 10 times larger than display on tws
+		// Seems from 'self account' place order doesn't x10
+
+		// self order size = 20
+		// other order size = 90
+		// API received (depth size x10 bug): size = 910 (90 * 10 + 20)
+		// Expect received: size = 1100 (90 * 10 + 20 * 10)
+
+		// Cannot detect:
+		// self order size = 100
+		// other order size = 90
+		// API received size (depth size x10 bug): 1000 (90 * 10 + 100)
+		// Expect received size: 1900 (90 * 10 + 100 * 10)
+
+		if ( _contract.tradingClass().equals("IBOND")){
+			warn("Fixing IBOND depth size x10 bug, always size = " + size + " / 10");
+			size = size / 10;
+		}
+
+		return size;
+	}
+
 	@Override
-	public void updateMktDepth(int pos, String mm, DeepType operation, DeepSide side, double price, int size_in_lot) {
+	public void updateMktDepth(int pos, String mm, DeepType operation, DeepSide side, double price, int size) {
 		if (pos >= max_depth) return;
 //		log("DeepType " + pos + " " + side + " " + operation + " " + price + " " + size);
 		if (_ct == 0)
 			log(">>> broadcast depth " + publishODBKChannel);
 		_ct += 1;
-		
-		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
+		//		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
+		size = fixSizeX10Bug(size);
 		JSONObject o = null;
 		if (operation == DeepType.INSERT) {
 			depthInited = false;
