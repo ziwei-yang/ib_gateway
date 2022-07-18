@@ -4,6 +4,9 @@ import static com.bitex.util.DebugUtil.err;
 import static com.bitex.util.DebugUtil.info;
 import static com.bitex.util.DebugUtil.log;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 import com.avalok.ib.IBOrder;
 import com.avalok.ib.GatewayController;
 
@@ -45,8 +48,20 @@ public class SingleOrderHandler implements IOrderHandler {
 			double remaining, double avgFillPrice,
 			int permId, int parentId, double lastFillPrice, 
 			int clientId, String whyHeld, double mktCapPrice) {
+		log("<-- SingleOrder udpate orderStatus: filled " + filled + " remaining:" + remaining + " permId:" + permId);
 		_order.setStatus(status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
 		_orderCacheHandler.writeToCacheAndOMS(_order);
+
+		if (filled > 0) {
+			log("Force req account balance again after 1 seconds");
+			// started from 20220615 no account mv update after order placed.			
+			new Timer("GatewayControllerDelayTask _postConnected()").schedule(new TimerTask() {
+				@Override
+				public void run() {
+					_ibController.subscribeAccountMV();
+				}
+			}, 1000);
+		}
 	}
 
 	@Override

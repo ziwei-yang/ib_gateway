@@ -47,6 +47,18 @@ public class IBContract extends Contract {
 				s = s + "@" + lastTradeDateOrContractMonth();
 			else
 				s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier();
+		} else if(secType() == SecType.OPT) {
+			s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier() + getRight() + strike();
+		} else if(secType() == SecType.BOND) {
+			// bonds contract don't symbol()
+			if (symbol() == null) {
+				// from ib response contract
+				s = tradingClass() + "-" + String.valueOf(conid());
+			} else {
+				// from input args
+				// use "s = symbol()" before get contract
+				s = symbol();
+			}
 		} else {
 			if (lastTradeDateOrContractMonth() == null || lastTradeDateOrContractMonth().length() == 0)
 				;

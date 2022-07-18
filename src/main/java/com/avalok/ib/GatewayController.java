@@ -14,7 +14,9 @@ import com.avalok.ib.handler.*;
 import com.bitex.util.Redis;
 
 import com.ib.client.*;
+import com.ib.client.Types.*;
 
+import com.ib.controller.ApiController;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
 
@@ -94,47 +96,81 @@ public class GatewayController extends BaseIBController {
 	////////////////////////////////////////////////////////////////
 	// Market top data module
 	////////////////////////////////////////////////////////////////
+
 	private ConcurrentHashMap<String, TopMktDataHandler> _topTasks = new ConcurrentHashMap<>();
+	private ConcurrentHashMap<String, OptionTopMktDataHandler> _optionTopTasks = new ConcurrentHashMap<>();
 	private ConcurrentHashMap<Integer, String> _topTaskByReqID = new ConcurrentHashMap<>();
 	private int subscribeTopData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
-		if (_topTasks.get(jobKey) != null) {
+		boolean isOptType = contract.secType() == SecType.OPT;
+		if (isOptType && _optionTopTasks.get(jobKey) != null) {
+			log("Task dulicated, skip subscribing option top data " + jobKey);
+			return 0;
+		} else if(!isOptType && _topTasks.get(jobKey) != null) {
 			log("Task dulicated, skip subscribing top data " + jobKey);
 			return 0;
 		}
-		log("Subscribe top data for " + jobKey);
-		boolean broadcastTop = true, broadcastTick = true;
-		TopMktDataHandler handler = new TopMktDataHandler(contract, broadcastTop, broadcastTick);
-		// See <Generic tick required> at https://interactivebrokers.github.io/tws-api/tick_types.html
-		String genericTickList = "";
-		// Request snapshot, then updates
-		boolean snapshot = true, regulatorySnapshot = true;
-		_apiController.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
-		snapshot = false; regulatorySnapshot = false;
-		_apiController.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+
+		if (isOptType){
+			log("Subscribe option top data for " + jobKey);
+			boolean broadcastTop = true, broadcastTick = true;
+			OptionTopMktDataHandler handler = new OptionTopMktDataHandler(contract, broadcastTop, broadcastTick);
+			String genericTickList = "";
+
+			// Request snapshot, then updates
+			boolean snapshot = true, regulatorySnapshot = true;
+			_apiController.reqOptionMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+			snapshot = false; regulatorySnapshot = false;
+			_apiController.reqOptionMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+			_optionTopTasks.put(jobKey, handler);
+		} else {
+			log("Subscribe top data for " + jobKey);
+			boolean broadcastTop = true, broadcastTick = true;
+			TopMktDataHandler handler = new TopMktDataHandler(contract, broadcastTop, broadcastTick);
+			// See <Generic tick required> at https://interactivebrokers.github.io/tws-api/tick_types.html
+			String genericTickList = "";
+
+			// Request snapshot, then updates
+			boolean snapshot = true, regulatorySnapshot = true;
+			_apiController.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+			snapshot = false; regulatorySnapshot = false;
+			_apiController.reqTopMktData(contract, genericTickList, snapshot, regulatorySnapshot, handler);
+			_topTasks.put(jobKey, handler);
+		}
 		int qid = _apiController.lastReqId();
 		_topTaskByReqID.put(qid, jobKey); // reference for error msg
-		_topTasks.put(jobKey, handler);
 		return qid;
 	}
 
 	private int unsubscribeTopData(IBContract contract) {
 		String jobKey = contract.exchange() + "/" + contract.shownName();
-		TopMktDataHandler handler = _topTasks.get(jobKey);
-		if (_topTasks.get(jobKey) == null) {
+		boolean isOptType = contract.secType() == SecType.OPT;
+		if (isOptType && _optionTopTasks.get(jobKey) == null) {
+			err("Task not exist, skip canceling option top data " + jobKey);
+			return 0;
+		} else if (!isOptType && _topTasks.get(jobKey) == null) {
 			err("Task not exist, skip canceling top data " + jobKey);
 			return 0;
 		}
-		log("Cancel top data for " + jobKey);
-		_apiController.cancelTopMktData(handler);
+
+		if (isOptType){
+			OptionTopMktDataHandler optHandler = _optionTopTasks.get(jobKey);
+			log("Cancel option top data for " + jobKey);
+			_apiController.cancelTopMktData(optHandler);
+			_optionTopTasks.remove(jobKey);
+		} else {
+			TopMktDataHandler handler = _topTasks.get(jobKey);
+			log("Cancel top data for " + jobKey);
+			_apiController.cancelTopMktData(handler);
+			_topTasks.remove(jobKey);
+		}
 		int qid = _apiController.lastReqId();
-		_topTasks.remove(jobKey);
 		return qid;
 	}
-	
+
 	private void restartMarketData() {
 		info("Re-subscribe all depth data");
-		 DeepMktDataHandler[] handlers1 = _depthTasks.values().toArray(new DeepMktDataHandler[0]);
+		DeepMktDataHandler[] handlers1 = _depthTasks.values().toArray(new DeepMktDataHandler[0]);
 		for (DeepMktDataHandler h : handlers1) {
 			unsubscribeDepthData(h.contract());
 			subscribeDepthData(h.contract());
@@ -142,6 +178,12 @@ public class GatewayController extends BaseIBController {
 		info("Re-subscribe all top data");
 		TopMktDataHandler[] handlers2 = _topTasks.values().toArray(new TopMktDataHandler[0]);
 		for (TopMktDataHandler h : handlers2) {
+			unsubscribeTopData(h.contract());
+			subscribeTopData(h.contract());
+		}
+		info("Re-subscribe all option top data");
+		OptionTopMktDataHandler[] handlers3 = _optionTopTasks.values().toArray(new OptionTopMktDataHandler[0]);
+		for (OptionTopMktDataHandler h : handlers3) {
 			unsubscribeTopData(h.contract());
 			subscribeTopData(h.contract());
 		}
@@ -157,7 +199,7 @@ public class GatewayController extends BaseIBController {
 //	}
 	
 	protected AccountMVHandler accountMVHandler = new AccountMVHandler();
-	protected void subscribeAccountMV() { // Is this streaming updating? Yes, with some latency 1~5s.
+	public void subscribeAccountMV() { // Is this streaming updating? Yes, with some latency 1~5s.
 		boolean subscribe = true;
 		log("--> Req account mv default");
 		if (accList != null) {

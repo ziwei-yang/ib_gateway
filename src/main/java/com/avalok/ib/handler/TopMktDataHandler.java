@@ -95,7 +95,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			};
 		}
 	}
-	
+
 	public IBContract contract() { return _contract; }
 
 	Double bidPrice, askPrice; // To determine last trade side
@@ -129,6 +129,41 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			break;
 		case HALTED:
 			break;
+		//	Bond
+		case BID_YIELD:
+			break;
+		case ASK_YIELD:
+			break;
+		case LAST_YIELD:
+			break;
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+		// DELAYED types
+		case DELAYED_BID:
+			bidPrice = price;
+			topBids[0].put("p", price);
+			if (topBids[0].getDouble("s") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_ASK:
+			askPrice = price;
+			topAsks[0].put("p", price);
+			if (topAsks[0].getDouble("s") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_LAST:
+			// if have market data subscription only type LAST, don't have type DELAYED_LAST 
+			lastTickPrice = price;
+			// info(_contract.shownName() + " tickPrice() tickType " + tickType + " price " + price + " attribs " + attribs);
+			break;
+		case DELAYED_OPEN:
+			break;
+		case DELAYED_CLOSE:
+			break;
+		case DELAYED_LOW:
+			break;
+		case DELAYED_HIGH:
+			break;
 		default:
 			info(_contract.shownName() + " tickPrice() tickType " + tickType + " price " + price + " attribs " + attribs);
 			break;
@@ -137,7 +172,12 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 
 	@Override
 	public void tickSize(TickType tickType, int size_in_lot) {
-		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
+		Double size;
+		if (_contract.exchange().equals("SEHK") || _contract.exchange().equals("HKFE")){
+			size = size_in_lot * 1.0;
+		} else {
+			size = size_in_lot * multiplier * marketDataSizeMultiplier;
+		}
 		if (_debug)
 			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 		switch (tickType) {
@@ -167,6 +207,35 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			break;
 		case HALTED:
 			break;
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+		// DELAYED types
+		case DELAYED_BID_SIZE:
+			topBids[0].put("s", size);
+			if (topBids[0].getDouble("p") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_ASK_SIZE:
+			topAsks[0].put("s", size);
+			if (topAsks[0].getDouble("p") == null) break;
+			if (tickDataInited) broadcastTop(false);
+			break;
+		case DELAYED_LAST_SIZE:
+			// if have market data subscription only type LAST, don't have type DELAYED_LAST_SIZE
+			lastTickSize = size;
+			recordLastTrade();
+			// info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
+			break;
+		case DELAYED_VOLUME:
+			break;
+		case DELAYED_OPEN:
+			break;
+		case DELAYED_CLOSE:
+			break;
+		case DELAYED_LOW:
+			break;
+		case DELAYED_HIGH:
+			break;
 		default:
 			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 			break;
@@ -186,6 +255,8 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	private Double lastTickPrice = null;
 	private Double lastTickSize = null;
 	private JSONObject lastTrade;
+
+	
 	private void recordLastTrade() {
 		if (tickDataInited == false) return;
 		if (lastTickSize == 0) return;
@@ -222,6 +293,13 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			// lastTickPrice = null; // Could be reused by next tick
 			lastTickSize = null;
 			break;
+		// Refer https://interactivebrokers.github.io/tws-api/market_data_type.html
+		// If live data is available a request for delayed data would be ignored by TWS
+		// DELAYED types
+		case DELAYED_LAST_TIMESTAMP:
+			lastTickTime = Long.parseLong(value + "000");
+			lastTickSize = null;
+			break;
 		default:
 			info(_contract.shownName() + " tickString() tickType " + tickType + " VALUE: " + value);
 			break;
@@ -246,11 +324,11 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	@Override
 	public void marketDataType(int marketDataType) {
 		// https://interactivebrokers.github.io/tws-api/market_data_type.html
-		/*** Switch to live (1) frozen (2) delayed (3) or delayed frozen (4) ***/
+		// Switch to live (1) frozen (2) delayed (3) or delayed frozen (4)
 		if (marketDataType == 1)
 			info(_contract.shownName() + " marketDataType() " + marketDataType);
 		else
-			err(_contract.shownName() + " marketDataType() " + marketDataType);
+			warn(_contract.shownName() + " marketDataType() " + marketDataType);
 	}
 
 	@Override
