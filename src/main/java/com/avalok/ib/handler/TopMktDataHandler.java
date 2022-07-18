@@ -171,8 +171,13 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	}
 
 	@Override
-	public void tickSize(TickType tickType, int size) {
-//		double size = size_in_lot * multiplier * marketDataSizeMultiplier;
+	public void tickSize(TickType tickType, int size_in_lot) {
+		Double size;
+		if (_contract.exchange().equals("SEHK") || _contract.exchange().equals("HKFE")){
+			size = size_in_lot * 1.0;
+		} else {
+			size = size_in_lot * multiplier * marketDataSizeMultiplier;
+		}
 		if (_debug)
 			info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
 		switch (tickType) {
@@ -248,7 +253,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	/////////////////////////////////////////////////////
 	private Long lastTickTime = 0l;
 	private Double lastTickPrice = null;
-	private Integer lastTickSize = null;
+	private Double lastTickSize = null;
 	private JSONObject lastTrade;
 
 	

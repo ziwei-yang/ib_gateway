@@ -19,8 +19,8 @@ public class OptionTopMktDataHandler implements IOptHandler{
     protected boolean _debug = false;
     public final int max_depth = 1;
     protected IBContract _contract;
-//    protected final double multiplier;
-//    protected final double marketDataSizeMultiplier;
+    protected final double multiplier;
+    protected final double marketDataSizeMultiplier;
     protected final String publishODBKChannel; // Publish odbk to universal system
     protected final String publishTickChannel; // Publish odbk to universal system
     protected final JSONArray topDataSnapshot = new JSONArray();
@@ -41,19 +41,19 @@ public class OptionTopMktDataHandler implements IOptHandler{
         _contract = contract;
         publishODBKChannel = "URANUS:"+contract.exchange()+":"+contract.pair()+":full_odbk_channel";
         publishTickChannel = "URANUS:"+contract.exchange()+":"+contract.pair()+":full_tick_channel";
-//        if (contract.multiplier() == null)
-//            multiplier = 1;
-//        else
-//            multiplier = Double.parseDouble(contract.multiplier());
-//        while (true) {
-//            JSONObject contractDetail = ContractDetailsHandler.findDetails(contract);
-//            if (contractDetail != null) {
-//                marketDataSizeMultiplier = contractDetail.getIntValue("mdSizeMultiplier");
-//                break;
-//            }
-//            log("wait for contract details " + publishODBKChannel);
-//            sleep(1);
-//        }
+        if (contract.multiplier() == null)
+            multiplier = 1;
+        else
+            multiplier = Double.parseDouble(contract.multiplier());
+        while (true) {
+            JSONObject contractDetail = ContractDetailsHandler.findDetails(contract);
+            if (contractDetail != null) {
+                marketDataSizeMultiplier = contractDetail.getIntValue("mdSizeMultiplier");
+                break;
+            }
+            log("wait for contract details " + publishODBKChannel);
+            sleep(1);
+        }
         // Pre-build snapshot
         topDataSnapshot.add(topBids);
         topDataSnapshot.add(topAsks);
@@ -109,7 +109,7 @@ public class OptionTopMktDataHandler implements IOptHandler{
     /////////////////////////////////////////////////////
     private Long lastTickTime = 0l;
     private Double lastTickPrice = null;
-    private Integer lastTickSize = null;
+    private Double lastTickSize = null;
     private JSONObject lastTrade;
 
 
@@ -178,8 +178,13 @@ public class OptionTopMktDataHandler implements IOptHandler{
     }
 
     @java.lang.Override
-    public void tickSize(TickType tickType, int size) {
-//        double size = size_in_lot * multiplier * marketDataSizeMultiplier;
+    public void tickSize(TickType tickType, int size_in_lot) {
+        Double size;
+        if (_contract.exchange().equals("SEHK") || _contract.exchange().equals("HKFE")){
+            size = size_in_lot * 1.0;
+        } else {
+            size = size_in_lot * multiplier * marketDataSizeMultiplier;
+        }
         if (_debug)
             info(_contract.shownName() + " tickSize() tickType " + tickType + " size " + size);
         switch (tickType) {
