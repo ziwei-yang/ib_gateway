@@ -302,14 +302,27 @@ public class OptionTopMktDataHandler implements IOptHandler{
                     " ImpliedVol: " + impliedVol + " Delta: "+ delta + " OptPrice: " + optPrice +
                     " PvDividend: " + pvDividend + " Gamma: "+ gamma + " Vega: " + vega +
                     " Theta: " + theta + " UndPrice: "+ undPrice);
+        JSONObject j = new JSONObject();
+        j.put("impliedVol",impliedVol);
+        j.put("delta",delta);
+        j.put("optPrice",optPrice);
+        j.put("pvDividend",pvDividend);
+        j.put("gamma",gamma);
+        j.put("vega",vega);
+        j.put("theta",theta);
+        j.put("undPrice",undPrice);
         switch (tickType) {
             case BID_OPTION:
+                writeComputation("IBGateway:BidComputation:" + _contract.shownName(), j);
                 break;
             case ASK_OPTION:
+                writeComputation("IBGateway:AskComputation:" + _contract.shownName(), j);
                 break;
             case LAST_OPTION:
+                writeComputation("IBGateway:LastComputation:" + _contract.shownName(), j);
                 break;
             case MODEL_OPTION:
+                writeComputation("IBGateway:ModelComputation:" + _contract.shownName(), j);
                 break;
             case DELAYED_BID_OPTION:
                 break;
@@ -327,6 +340,12 @@ public class OptionTopMktDataHandler implements IOptHandler{
                 break;
         }
     }
+
+    private void writeComputation(String key, JSONObject j){
+        log(">>> Redis " + key);
+        Redis.set(key, j);
+    }
+
     private void broadcastTop(boolean verbose) {
         if (broadcastTopLambda != null) {
             Redis.exec(broadcastTopLambda);
