@@ -325,12 +325,16 @@ public class OptionTopMktDataHandler implements IOptHandler{
                 writeComputation("IBGateway:ModelComputation:" + _contract.shownName(), j);
                 break;
             case DELAYED_BID_OPTION:
+                writeComputation("IBGateway:BidComputation:" + _contract.shownName(), j);
                 break;
             case DELAYED_ASK_OPTION:
+                writeComputation("IBGateway:AskComputation:" + _contract.shownName(), j);
                 break;
             case DELAYED_LAST_OPTION:
+                writeComputation("IBGateway:LastComputation:" + _contract.shownName(), j);
                 break;
             case DELAYED_MODEL_OPTION:
+                writeComputation("IBGateway:ModelComputation:" + _contract.shownName(), j);
                 break;
             default:
                 info(_contract.shownName() + " tickOptionComputation() tickType " + tickType +
