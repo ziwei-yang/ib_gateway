@@ -346,7 +346,6 @@ public class OptionTopMktDataHandler implements IOptHandler{
     }
 
     private void writeComputation(String key, JSONObject j){
-        log(">>> Redis " + key);
         Redis.set(key, j);
     }
 
