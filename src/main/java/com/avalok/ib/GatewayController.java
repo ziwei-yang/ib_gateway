@@ -341,8 +341,14 @@ public class GatewayController extends BaseIBController {
 				case "SUB_ODBK":
 					apiReqId = subscribeDepthData(new IBContract(j.getJSONObject("contract")));
 					break;
+				case "UNSUB_ODBK":
+					apiReqId = unsubscribeDepthData(new IBContract(j.getJSONObject("contract")));
+					break;
 				case "SUB_TOP":
 					apiReqId = subscribeTopData(new IBContract(j.getJSONObject("contract")));
+					break;
+				case "UNSUB_TOP":
+					apiReqId = unsubscribeTopData(new IBContract(j.getJSONObject("contract")));
 					break;
 				case "RESET":
 					_postConnected();
@@ -422,6 +428,7 @@ public class GatewayController extends BaseIBController {
 				_depthTasks.remove(depthJobKey);
 				j.put("type", "error");
 				j.put("msg", "depth req failed " + depthJobKey);
+				j.put("detail", depthJobKey + " " + errorMsg);
 				Redis.pub(ackChannel, j);
 				break;
 			}

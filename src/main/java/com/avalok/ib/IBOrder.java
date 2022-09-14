@@ -296,6 +296,11 @@ public class IBOrder {
 		j.put("tif", order.tif()); // LMT
 		j.put("whatIf", order.whatIf()); // LMT
 		j.put("secType", contract.secType());
+		if (orderState.commission() == Double.MAX_VALUE) {
+			j.put("commission", 0);			
+		}
+		else
+			j.put("commission", orderState.commission());
 
 		j.put("extMsg", extMsg);
 		return j;
