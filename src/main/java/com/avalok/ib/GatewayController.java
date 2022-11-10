@@ -8,6 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
 
 import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.controller.BaseIBController;
 import com.avalok.ib.handler.*;
@@ -278,6 +279,11 @@ public class GatewayController extends BaseIBController {
 		return _apiController.lastReqId();
 	}
 
+	public int queryContractListToRedis(JSONObject contractWithLimitInfo, Long id) {
+		IBContract ibc = new IBContract(contractWithLimitInfo);
+		_apiController.reqContractDetailsToRedis(ibc, ContractDetailsHandler.instance, id);
+		return _apiController.lastReqId();
+	}
 	////////////////////////////////////////////////////////////////
 	// Life cycle and command processing
 	////////////////////////////////////////////////////////////////
@@ -355,6 +361,9 @@ public class GatewayController extends BaseIBController {
 					break;
 				case "FIND_CONTRACTS":
 					apiReqId = queryContractListWithCache(j.getJSONObject("contract"));
+					break;
+				case "FIND_CONTRACTS_TO_REDIS":
+					apiReqId = queryContractListToRedis(j.getJSONObject("contract"), id);
 					break;
 				case "PLACE_ORDER":
 					apiReqId = placeOrder(new IBOrder(j.getJSONObject("iborder")));

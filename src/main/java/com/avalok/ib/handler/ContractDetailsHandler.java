@@ -7,6 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.GatewayController;
 import com.avalok.ib.IBContract;
@@ -154,5 +156,65 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		log(">>> Redis " + key);
 		Redis.set(key, j);
 		return j;
+	}
+
+	// direct copy writeDetail
+	private JSONObject detailToJSONObject(ContractDetails detail) {
+		JSONObject j = new JSONObject();
+		// vim marco helps a lot from ContractDetails source code.
+		j.put("contract", new IBContract(detail.contract()).toJSON());
+		j.put("marketName", detail.marketName());
+		j.put("minTick", detail.minTick());
+		j.put("priceMagnifier", detail.priceMagnifier());
+		j.put("orderTypes", detail.orderTypes());
+		j.put("validExchanges", detail.validExchanges());
+		j.put("underConId", detail.underConid());
+		j.put("longName", detail.longName());
+		j.put("contractMonth", detail.contractMonth());
+		j.put("industry", detail.industry());
+		j.put("category", detail.category());
+		j.put("subcategory", detail.subcategory());
+		j.put("timeZoneId", detail.timeZoneId());
+		j.put("tradingHours", detail.tradingHours());
+		j.put("liquidHours", detail.liquidHours());
+		j.put("evRule", detail.evRule());
+		j.put("evMultiplier", detail.evMultiplier());
+		j.put("mdSizeMultiplier", detail.mdSizeMultiplier());
+		j.put("aggGroup", detail.aggGroup());
+		j.put("underSymbol", detail.underSymbol());
+		j.put("underSecType", detail.underSecType());
+		j.put("marketRuleIds", detail.marketRuleIds());
+		j.put("realExpirationDate", detail.realExpirationDate());
+		j.put("lastTradeTime", detail.lastTradeTime());
+		j.put("cusip", detail.cusip());
+		j.put("ratings", detail.ratings());
+		j.put("descAppend", detail.descAppend());
+		j.put("bondType", detail.bondType());
+		j.put("couponType", detail.couponType());
+		j.put("callable", detail.callable());
+		j.put("putable", detail.putable());
+		j.put("coupon", detail.coupon());
+		j.put("convertible", detail.convertible());
+		j.put("maturity", detail.maturity());
+		j.put("issueDate", detail.issueDate());
+		j.put("nextOptionDate", detail.nextOptionDate());
+		j.put("nextOptionType", detail.nextOptionType());
+		j.put("nextOptionPartial", detail.nextOptionPartial());
+		j.put("notes", detail.notes());
+		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
+		return j;
+	}
+
+	public void setexDetailList(List<ContractDetails> list, Long id) {
+		JSONArray array = new JSONArray();
+		for (ContractDetails detail: list) {
+			array.add( detailToJSONObject(detail));
+		}
+		//			JSONArray jsonArray = new JSONArray();
+		//			jsonArray.add(details);
+		//			log(jsonArray.toString());
+		String key = "IBGateway:ReqIdContract:" + id;
+		log("Redis -> " + key);
+		Redis.setex(key, 30, JSON.toJSONString(array));
 	}
 }

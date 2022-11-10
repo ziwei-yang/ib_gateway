@@ -90,4 +90,16 @@ public class Redis {
 			}
 		});
 	}
+
+	public static void setex (String key, int seconds, Object j) {
+		setex(key, seconds, JSON.toJSONString(j));
+	}
+	public static void setex(String k, int seconds, String v) {
+		exec(new Consumer<Jedis>() {
+			@Override
+			public void accept(Jedis t) {
+				t.setex(k, seconds, v);
+			}
+		});
+	}
 }

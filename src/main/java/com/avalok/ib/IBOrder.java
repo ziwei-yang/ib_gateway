@@ -291,13 +291,14 @@ public class IBOrder {
 		// created time missing, default 2000-01-01 00:00:00
 		// suggest using orderRef to store client_oid+timestamp when created.
 		j.put("t", 946656000000l);
+		j.put("updateTime", System.currentTimeMillis());
 		j.put("market", contract.exchange());
 		j.put("orderType", order.orderType()); // LMT
 		j.put("tif", order.tif()); // LMT
 		j.put("whatIf", order.whatIf()); // LMT
 		j.put("secType", contract.secType());
 		if (orderState.commission() == Double.MAX_VALUE) {
-			j.put("commission", 0);			
+			j.put("commission", 0);
 		}
 		else
 			j.put("commission", orderState.commission());
