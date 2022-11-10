@@ -14,6 +14,7 @@ import java.util.Map.Entry;
 import java.util.Set;
 import java.util.StringTokenizer;
 
+import com.avalok.ib.handler.ContractDetailsHandler;
 import com.ib.client.*;
 import com.ib.client.Types.BarSize;
 import com.ib.client.Types.DeepSide;
@@ -390,6 +391,22 @@ public class ApiController implements EWrapper {
 			}
 			@Override public void contractDetailsEnd() {
 				processor.contractDetails( list);
+			}
+		});
+		sendEOM();
+	}
+
+	public void reqContractDetailsToRedis( Contract contract, final ContractDetailsHandler processor, Long id) {
+		if (!checkConnection())
+			return;
+
+		final List<ContractDetails> list = new ArrayList<>();
+		internalReqContractDetails( contract, new IInternalHandler() {
+			@Override public void contractDetails(ContractDetails data) {
+				list.add( data);
+			}
+			@Override public void contractDetailsEnd() {
+				processor.setexDetailList(list, id);
 			}
 		});
 		sendEOM();

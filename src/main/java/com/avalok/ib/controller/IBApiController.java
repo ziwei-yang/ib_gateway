@@ -5,6 +5,7 @@ import static com.bitex.util.DebugUtil.*;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 import com.avalok.ib.IBContract;
+import com.avalok.ib.handler.ContractDetailsHandler;
 import com.ib.client.*;
 import com.ib.controller.*;
 import com.ib.controller.ApiConnection.*;
@@ -200,5 +201,10 @@ public class IBApiController {
 		twsAPIRateControl();
 		recordOperationHistory("reqContractDetails");
 		_api.reqContractDetails(contract, processor);
+	}
+	public void reqContractDetailsToRedis(Contract contract, final ContractDetailsHandler processor, Long id) {
+		twsAPIRateControl();
+		recordOperationHistory("reqContractDetailsToRedis");
+		_api.reqContractDetailsToRedis(contract, processor, id);
 	}
 }
