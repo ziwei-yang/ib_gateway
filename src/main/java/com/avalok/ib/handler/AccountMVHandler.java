@@ -62,12 +62,22 @@ public class AccountMVHandler implements IAccountHandler {
 		IBContract ibc = new IBContract(position.contract());
 		ContractDetailsHandler.findDetails(ibc); // Auto query details for instruments in portfolio
 		String account = position.account();
-		info("<-- " + account + " Pos " + ibc.exchange() + "/" + ibc.shownName() + " pos:" + position.position() + " cost:" + position.averageCost());
+		info("<-- " + account + " Pos " + ibc.exchange() + "/" +
+				ibc.shownName() + " pos:" + position.position() +
+				" cost:" + position.averageCost() + " realPnl:" + position.realPnl() +
+				" unrealPnl:" + position.unrealPnl() + " marketPrice:" + position.marketPrice() +
+				" marketValue:" + position.marketValue());
+
 		JSONObject j = new JSONObject();
 		j.put("type", "position");
 		j.put("contract", ibc.toJSON());
 		j.put("pos", position.position());
 		j.put("avgCost", position.averageCost());
+
+		j.put("realPnl", position.realPnl());
+		j.put("unrealPnl", position.unrealPnl());
+		j.put("marketPrice", position.marketPrice());
+		j.put("marketValue", position.marketValue());
 		if (_dataInit) {
 			_data.putIfAbsent(account, new ConcurrentHashMap<String, JSONObject>());
 			_data.get(account).put(ibc.shownName(), j);

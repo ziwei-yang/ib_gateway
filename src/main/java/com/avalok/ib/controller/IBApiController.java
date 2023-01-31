@@ -207,4 +207,14 @@ public class IBApiController {
 		recordOperationHistory("reqContractDetailsToRedis");
 		_api.reqContractDetailsToRedis(contract, processor, id);
 	}
+	public void reqAccountSummary(String group, AccountSummaryTag[] tags, ApiController.IAccountSummaryHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("reqAccountSummary:");
+		_api.reqAccountSummary(group, tags, handler);
+	}
+	public void cancelAccountSummary(ApiController.IAccountSummaryHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("cancelAccountSummary:");
+		_api.cancelAccountSummary(handler);
+	}
 }
