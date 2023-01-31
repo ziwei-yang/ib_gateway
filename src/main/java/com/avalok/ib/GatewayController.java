@@ -16,7 +16,7 @@ import com.bitex.util.Redis;
 
 import com.ib.client.*;
 import com.ib.client.Types.*;
-
+import com.ib.controller.AccountSummaryTag;
 import com.ib.controller.ApiController;
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
@@ -213,6 +213,21 @@ public class GatewayController extends BaseIBController {
 			_apiController.reqAccountUpdates(subscribe, "", accountMVHandler);
 		}
 	}
+
+	////////////////////////////////////////////////////////////////
+	// Account Summary
+	////////////////////////////////////////////////////////////////
+	protected AccountSummaryHandler accountSummaryHandler = new AccountSummaryHandler();
+
+	protected int queryAccountSummary() {
+		if (!isConnected()) {
+			return 0;
+		}
+		AccountSummaryTag[] a = AccountSummaryTag.values();
+		_apiController.cancelAccountSummary(accountSummaryHandler);
+		_apiController.reqAccountSummary("All", AccountSummaryTag.values(), accountSummaryHandler);
+		return _apiController.lastReqId();
+	}
 	
 	////////////////////////////////////////////////////////////////
 	// Order & trades updates.
@@ -376,6 +391,12 @@ public class GatewayController extends BaseIBController {
 					break;
 				case "ACCOUNT_LIST":
 					response = JSON.toJSONString(accList);
+					break;
+				case "UPDATE_ACCOUNT_MV":
+					subscribeAccountMV();
+					break;
+				case "FIND_ACCOUNT_SUMMARY":
+					apiReqId = queryAccountSummary();
 					break;
 				default:
 					errorMsg = "Unknown cmd " + j.getString("cmd");
