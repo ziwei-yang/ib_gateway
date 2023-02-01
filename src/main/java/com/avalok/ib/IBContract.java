@@ -48,8 +48,7 @@ public class IBContract extends Contract {
 		}
 		if (isCombo()) {
 			List<String> conidList = new ArrayList<>();
-			for (ComboLeg leg: comboLegs()) {
-				conidList.add(String.valueOf(leg.conid()));
+			for (ComboLeg leg: comboLegs()) { conidList.add(String.valueOf(leg.conid())); }
 
 			_pair= String.join("+", conidList);
 			_shownName = exchange() + ":" + secType() + ":" + _pair;
