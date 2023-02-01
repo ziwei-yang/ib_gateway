@@ -228,7 +228,7 @@ public class GatewayController extends BaseIBController {
 		_apiController.reqAccountSummary("All", AccountSummaryTag.values(), accountSummaryHandler);
 		return _apiController.lastReqId();
 	}
-	
+
 	////////////////////////////////////////////////////////////////
 	// Order & trades updates.
 	////////////////////////////////////////////////////////////////
@@ -391,9 +391,6 @@ public class GatewayController extends BaseIBController {
 					break;
 				case "ACCOUNT_LIST":
 					response = JSON.toJSONString(accList);
-					break;
-				case "UPDATE_ACCOUNT_MV":
-					subscribeAccountMV();
 					break;
 				case "FIND_ACCOUNT_SUMMARY":
 					apiReqId = queryAccountSummary();

@@ -117,6 +117,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 	public final static int TWS_API_PORT = Integer.parseInt(System.getenv("TWS_API_PORT"));
 	public final static String TWS_NAME = TWS_API_ADDR + "_" + TWS_API_PORT;
 	protected int _apiClientID = Integer.parseInt(System.getenv("TWS_API_CLIENTID")); // Only the default client (i.e 0) can auto bind orders
+	protected boolean waitingConnect = false;
 	protected synchronized void _connect() {
 		// DebugUtil.printStackInfo();
 		if (isConnected()) {
@@ -125,8 +126,12 @@ public abstract class BaseIBController implements IConnectionHandler {
 		} else if (_initConnTS <= 0) {
 			log("_initConnTS <= 0, abort _connect()");
 			return;
+		} else if (waitingConnect) {
+			log("waitingConnect");
+			return;
 		} else if (_initConnTS >= System.currentTimeMillis()) {
 			log("Sleep " + (_initConnTS - System.currentTimeMillis()) + "ms before _connect()");
+			waitingConnect = true;
 			sleep(_initConnTS - System.currentTimeMillis());
 		}
 		new Thread(new Runnable() {
@@ -134,6 +139,7 @@ public abstract class BaseIBController implements IConnectionHandler {
 				int retry_ct = 0;
 				log("Connect thread started.");
 				while (true) {
+					waitingConnect = true;
 					try {
 						log("Connecting gateway " + TWS_API_ADDR + " ID " + _apiClientID);
 						// TODO this step might hang.
@@ -143,6 +149,8 @@ public abstract class BaseIBController implements IConnectionHandler {
 						_apiController = newController;  // Only assign after _connect()
 						_connectedTS = System.currentTimeMillis();
 						log("Gateway connected with client ID " + _apiClientID);
+						_markTWSServerConnected(false);
+						waitingConnect = false;
 						break;
 					} catch (StackOverflowError e) {
 						log("StackOverflowError in connecting gateway with ID " + _apiClientID + " retry_ct:" + retry_ct);
@@ -226,10 +234,10 @@ public abstract class BaseIBController implements IConnectionHandler {
 
 	@Override
 	public void disconnected() {
+		if (waitingConnect) return;
+
 		recordMessage(0, 0, "IB API disconnected");
 		log("disconnected()");
-		// Set controller NULL then mark flags as disconnected.
-		_apiController = null;
 		_markDisconnected();
 		// Reconnect automatically.
 		_connect();
