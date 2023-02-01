@@ -49,18 +49,18 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			ibc.copyFrom(result);
 			return true;
 		}
-		if (GW_CONTROLLER != null) queryDetails(ibc);
 		return false;
 	}
 
 	public static JSONObject findDetails(IBContract ibc) {
+		if (GW_CONTROLLER != null) queryDetails(ibc);
+
 		if (ibc.isFullDetailed() == false)
 			fillIBContract(ibc);
 		String key = ibc.shownName();
 		if (key == null) key = ibc.toString();
 		JSONObject ret = KNOWN_CONTRACT_DETAILS.get(key);
 		if (ret != null) return ret;
-		if (GW_CONTROLLER != null) queryDetails(ibc);
 		return null;
 	}
 
@@ -152,6 +152,9 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
+		j.put("minSize", detail.minSize().longValue());
+		j.put("sizeIncrement", detail.sizeIncrement().longValue());
+		j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
 		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
 		log(">>> Redis " + key);
 		Redis.set(key, j);
@@ -201,6 +204,9 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
+		j.put("minSize", detail.minSize().longValue());
+		j.put("sizeIncrement", detail.sizeIncrement().longValue());
+		j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
 		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
 		return j;
 	}

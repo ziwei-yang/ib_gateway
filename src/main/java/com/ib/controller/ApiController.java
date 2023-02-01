@@ -113,7 +113,10 @@ public class ApiController implements EWrapper {
                     reader.processMsgs();
                 } catch (IOException e) {
                     error(e);
-                }
+                } catch (NullPointerException e) {
+					// Fix ib auto restart connection error
+					error(e);
+				}
             }
         }).start();
 	}
