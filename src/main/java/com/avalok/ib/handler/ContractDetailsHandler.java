@@ -152,9 +152,10 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
-		j.put("minSize", detail.minSize().longValue());
-		j.put("sizeIncrement", detail.sizeIncrement().longValue());
-		j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
+		// cannot find symbol minSize & sizeIncrement & suggestedSizeIncrement at API version 9.76
+		// j.put("minSize", detail.minSize().longValue());
+		// j.put("sizeIncrement", detail.sizeIncrement().longValue());
+		// j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
 		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
 		log(">>> Redis " + key);
 		Redis.set(key, j);
@@ -204,9 +205,10 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
-		j.put("minSize", detail.minSize().longValue());
-		j.put("sizeIncrement", detail.sizeIncrement().longValue());
-		j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
+		// cannot find symbol minSize & sizeIncrement & suggestedSizeIncrement at API version 9.76
+		// j.put("minSize", detail.minSize().longValue());
+		// j.put("sizeIncrement", detail.sizeIncrement().longValue());
+		// j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
 		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
 		return j;
 	}
