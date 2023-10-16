@@ -1,16 +1,9 @@
 package com.avalok.ib;
 
-import com.ib.client.ComboLeg;
 import com.ib.client.Contract;
-import com.ib.client.ContractDetails;
 import com.ib.client.Types.*;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.handler.ContractDetailsHandler;
-
-import java.lang.reflect.Array;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
 
 import static com.bitex.util.DebugUtil.*;
 
@@ -46,48 +39,39 @@ public class IBContract extends Contract {
 			if (_fullDetailed == false)
 				warn("Could not find contract details in cache:\n"+toJSON());
 		}
-		if (isCombo()) {
-			List<String> conidList = new ArrayList<>();
-			for (ComboLeg leg: comboLegs()) { conidList.add(String.valueOf(leg.conid())); }
-
-			_pair= String.join("+", conidList);
-			_shownName = exchange() + ":" + secType() + ":" + _pair;
-		} else {
-			String s = currency() + "-" + symbol();
-			if (secType() == SecType.STK)
-				;
-			else if (secType() == SecType.FUT) {
-				if (multiplier() == null || Double.parseDouble(multiplier()) == 1)
-					s = s + "@" + lastTradeDateOrContractMonth();
-				else
-					s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier();
-			} else if(secType() == SecType.OPT) {
-				s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier() + getRight() + strike();
-			} else if(secType() == SecType.BOND) {
-				// bonds contract don't symbol()
-				if (symbol() == null) {
-					// from ib response contract
-					s = tradingClass() + "-" + conid();
-				} else {
-					// from input args
-					// use "s = symbol()" before get contract
-					s = symbol();
-				}
+		String s = currency() + "-" + symbol();
+		if (secType() == SecType.STK)
+			;
+		else if (secType() == SecType.FUT) {
+			if (multiplier() == null || Double.parseDouble(multiplier()) == 1)
+				s = s + "@" + lastTradeDateOrContractMonth();
+			else
+				s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier();
+		} else if(secType() == SecType.OPT) {
+			s = s + "@" + lastTradeDateOrContractMonth() + "@" + multiplier() + getRight() + strike();
+		} else if(secType() == SecType.BOND) {
+			// bonds contract don't symbol()
+			if (symbol() == null) {
+				// from ib response contract
+				s = tradingClass() + "-" + String.valueOf(conid());
 			} else {
-				info("Unknown secType: " + secType());
-				if (lastTradeDateOrContractMonth() == null || lastTradeDateOrContractMonth().length() == 0)
-					;
-				else
-					s = s + "@" + lastTradeDateOrContractMonth();
-				if (multiplier() == null || Double.parseDouble(multiplier()) == 1)
-					;
-				else
-					s = s + "@" + multiplier();
+				// from input args
+				// use "s = symbol()" before get contract
+				s = symbol();
 			}
-			_pair= s;
-			s = exchange() + ":" + secType() + ":" + s;
-			_shownName = s;
+		} else {
+			if (lastTradeDateOrContractMonth() == null || lastTradeDateOrContractMonth().length() == 0)
+				;
+			else
+				s = s + "@" + lastTradeDateOrContractMonth();
+			if (multiplier() == null || Double.parseDouble(multiplier()) == 1)
+				;
+			else
+				s = s + "@" + multiplier();
 		}
+		_pair= s;
+		s = exchange() + ":" + secType() + ":" + s;
+		_shownName = s;
 	}
 	
 	public boolean isFullDetailed() { return _fullDetailed; }
@@ -188,8 +172,6 @@ public class IBContract extends Contract {
 		tradingClass(c.tradingClass());
 		secIdType (c.secIdType());
 		secId(c.secId());
-		comboLegs(c.comboLegs());
-		comboLegsDescrip(c.comboLegsDescrip());
 		_fullDetailed = true; // Always trust Contract from IB API
 		buildFullInfo();
 	}
@@ -209,8 +191,6 @@ public class IBContract extends Contract {
 		tradingClass(c.tradingClass());
 		secIdType (c.secIdType());
 		secId(c.secId());
-		comboLegs(c.comboLegs());
-		comboLegsDescrip(c.comboLegsDescrip());
 		_fullDetailed = c._fullDetailed;
 		buildFullInfo();
 	}

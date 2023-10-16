@@ -7,10 +7,12 @@ import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
 import com.alibaba.fastjson.JSONObject;
+import com.avalok.ib.GatewayController;
 import com.avalok.ib.IBContract;
 import com.bitex.util.Redis;
 import com.ib.controller.Position;
 import com.ib.controller.ApiController.IAccountHandler;
+
 
 public class AccountMVHandler implements IAccountHandler {
 
@@ -19,6 +21,9 @@ public class AccountMVHandler implements IAccountHandler {
 	private boolean _dataInit = false;
 	private Map<String, Map<String, JSONObject>> _data = new ConcurrentHashMap<>();
 	private Map<String, Map<String, JSONObject>> _tmpData = new ConcurrentHashMap<>();
+//	public static GatewayController GW_CONTROLLER = null;
+//	public List<IBContract> ibc_cache = new ArrayList<>();
+	public Map<String, IBContract> ibc_cache = new ConcurrentHashMap<>();
 
 	@Override
 	public synchronized void accountValue(String account, String key, String desc1, String desc2) {
@@ -60,6 +65,10 @@ public class AccountMVHandler implements IAccountHandler {
 	@Override
 	public synchronized void updatePortfolio(Position position) {
 		IBContract ibc = new IBContract(position.contract());
+		if (!ibc_cache.containsKey(ibc.pair())) {
+			ibc_cache.put(ibc.pair(), ibc);	
+		}
+
 		ContractDetailsHandler.findDetails(ibc); // Auto query details for instruments in portfolio
 		String account = position.account();
 		info("<-- " + account + " Pos " + ibc.exchange() + "/" +
@@ -78,6 +87,9 @@ public class AccountMVHandler implements IAccountHandler {
 		j.put("unrealPnl", position.unrealPnl());
 		j.put("marketPrice", position.marketPrice());
 		j.put("marketValue", position.marketValue());
+
+//		info(ibc.shownName() + " lastTickPrice: "+ GW_CONTROLLER.findTopMktDataHandler(ibc).lastTickPrice);		
+		
 		if (_dataInit) {
 			_data.putIfAbsent(account, new ConcurrentHashMap<String, JSONObject>());
 			_data.get(account).put(ibc.shownName(), j);

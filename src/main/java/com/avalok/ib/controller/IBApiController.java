@@ -7,9 +7,13 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.avalok.ib.IBContract;
 import com.avalok.ib.handler.ContractDetailsHandler;
 import com.ib.client.*;
+import com.ib.client.Types.BarSize;
+import com.ib.client.Types.DurationUnit;
+import com.ib.client.Types.WhatToShow;
 import com.ib.controller.*;
 import com.ib.controller.ApiConnection.*;
 import com.ib.controller.ApiController.IAccountHandler;
+import com.ib.controller.ApiController.IAccountUpdateMultiHandler;
 import com.ib.controller.ApiController.ICompletedOrdersHandler;
 import com.ib.controller.ApiController.IConnectionHandler;
 import com.ib.controller.ApiController.IContractDetailsHandler;
@@ -97,6 +101,9 @@ public class IBApiController {
 		recordOperationHistory("reqAccountUpdates:" + acctCode);
 		_api.reqAccountUpdates(subscribe, acctCode, handler);
 	}
+	public void reqAccountUpdatesMulti(String account, String modelCode, boolean ledgerAndNLV, IAccountUpdateMultiHandler handler) {
+		_api.reqAccountUpdatesMulti(account, modelCode, ledgerAndNLV, handler);
+	}
 	public void reqPositions(IPositionHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("reqPositions");
@@ -157,11 +164,12 @@ public class IBApiController {
 		recordOperationHistory("removeLiveOrderHandler");
 		_api.removeLiveOrderHandler(handler);
 	}
-//	public void reqHistoricalData(NewContract contract, String endDateTime, int duration, DurationUnit durationUnit, BarSize barSize, WhatToShow whatToShow, boolean rthOnly, IHistoricalDataHandler handler) {
-//		twsAPIRateControl();
-//		recordOperationHistory("reqHistoricalData:" + JSON.toJSONString(contract));
-//		_api.reqHistoricalData(contract, endDateTime, duration, durationUnit, barSize, whatToShow, rthOnly, handler);
-//	}
+	public void reqHistoricalData(Contract contract, String endDateTime, int duration, DurationUnit durationUnit, BarSize barSize, WhatToShow whatToShow, boolean rthOnly, boolean keepUpToDate, IHistoricalDataHandler handler) {
+//				client.reqHistoricalData(4001, ContractSamples.EurGbpFx(), formatted, "1 M", "1 day", "MIDPOINT", 1, 1, false, null);
+		twsAPIRateControl();
+		recordOperationHistory("reqHistoricalData");
+		_api.reqHistoricalData(contract, endDateTime, duration, durationUnit, barSize, whatToShow, rthOnly, keepUpToDate, handler);
+	}
 	public void cancelHistoricalData(IHistoricalDataHandler handler) {
 		twsAPIRateControl();
 		recordOperationHistory("cancelHistoricalData");
@@ -216,5 +224,15 @@ public class IBApiController {
 		twsAPIRateControl();
 		recordOperationHistory("cancelAccountSummary:");
 		_api.cancelAccountSummary(handler);
+	}
+	public  void reqOptionVolatility(Contract c, double optPrice, double underPrice, IOptHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("reqOptionVolatility");
+		_api.reqOptionVolatility(c, optPrice, underPrice, handler);
+	}
+	public  void reqOptionComputation(Contract c, double vol, double underPrice, IOptHandler handler) {
+		twsAPIRateControl();
+		recordOperationHistory("reqOptionComputation");
+		_api.reqOptionComputation(c, vol, underPrice, handler);
 	}
 }
