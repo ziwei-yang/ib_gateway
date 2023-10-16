@@ -5,6 +5,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.IBContract;
 import com.bitex.util.Redis;
+import com.ib.client.Contract;
 import com.ib.client.TickAttrib;
 import com.ib.client.TickType;
 import com.ib.controller.ApiController.IOptHandler;
@@ -13,7 +14,6 @@ import redis.clients.jedis.Jedis;
 import java.util.function.Consumer;
 
 import static com.bitex.util.DebugUtil.*;
-import static com.bitex.util.DebugUtil.warn;
 
 public class OptionTopMktDataHandler implements IOptHandler{
     protected boolean _debug = false;
@@ -45,14 +45,27 @@ public class OptionTopMktDataHandler implements IOptHandler{
             multiplier = 1;
         else
             multiplier = Double.parseDouble(contract.multiplier());
+		Long t0 = System.currentTimeMillis();
         while (true) {
             JSONObject contractDetail = ContractDetailsHandler.findDetails(contract);
             if (contractDetail != null) {
                 marketDataSizeMultiplier = contractDetail.getIntValue("mdSizeMultiplier");
                 break;
             }
+			if (t0 < System.currentTimeMillis() - 2000) {
+				Contract c = contract;
+				c.exchange("SMART");
+				IBContract smartIbc = new IBContract(c);
+				JSONObject smartContractDetail = ContractDetailsHandler.findDetails(smartIbc);
+				if (smartContractDetail != null) {
+					info("WARNING!! FIX _contract.exchange FROM"+ _contract.exchange() + " to SMART");
+					_contract = smartIbc;
+					marketDataSizeMultiplier = smartContractDetail.getIntValue("mdSizeMultiplier");
+					break;
+				}
+			}
             log("wait for contract details " + publishODBKChannel);
-            sleep(1);
+            sleep(200);
         }
         // Pre-build snapshot
         topDataSnapshot.add(topBids);
@@ -108,7 +121,7 @@ public class OptionTopMktDataHandler implements IOptHandler{
     // tickSize() tickType LAST_SIZE size 1 (if have more trade at same time)
     /////////////////////////////////////////////////////
     private Long lastTickTime = 0l;
-    private Double lastTickPrice = null;
+    public Double lastTickPrice = null;
     private Double lastTickSize = null;
     private JSONObject lastTrade;
 
@@ -311,6 +324,7 @@ public class OptionTopMktDataHandler implements IOptHandler{
         j.put("vega",vega);
         j.put("theta",theta);
         j.put("undPrice",undPrice);
+        j.put("updateTime", System.currentTimeMillis());
         switch (tickType) {
             case BID_OPTION:
                 writeComputation("IBGateway:BidComputation:" + _contract.shownName(), j);
@@ -346,6 +360,7 @@ public class OptionTopMktDataHandler implements IOptHandler{
     }
 
     private void writeComputation(String key, JSONObject j){
+    	log("Redis -> "+ key);
         Redis.set(key, j);
     }
 

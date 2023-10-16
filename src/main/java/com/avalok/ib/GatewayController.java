@@ -6,6 +6,8 @@ import java.util.Timer;
 import java.util.TimerTask;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Consumer;
+import java.text.SimpleDateFormat;
+import java.util.*;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONArray;
@@ -18,6 +20,9 @@ import com.ib.client.*;
 import com.ib.client.Types.*;
 import com.ib.controller.AccountSummaryTag;
 import com.ib.controller.ApiController;
+import com.ib.controller.ApiController.IHistoricalDataHandler;
+import com.ib.controller.ApiController.ITopMktDataHandler;
+
 import redis.clients.jedis.Jedis;
 import redis.clients.jedis.JedisPubSub;
 
@@ -32,6 +37,8 @@ public class GatewayController extends BaseIBController {
 	public GatewayController() {
 		ContractDetailsHandler.GW_CONTROLLER = this;
 		MarketRuleHandler.GW_CONTROLLER = this;
+//		AccountMVHandler.GW_CONTROLLER = this;
+
 		Runtime.getRuntime().addShutdownHook(new Thread() {
 			public void run() {
 				orderCacheHandler.teardownOMS("Shutting down");
@@ -190,6 +197,17 @@ public class GatewayController extends BaseIBController {
 		}
 	}
 	
+//	public ITopMktDataHandler findMktDataHandler(IBContract contract) {
+//		String jobKey = contract.exchange() + "/" + contract.shownName();
+//		log("jobKey " + jobKey);
+//		if (contract.secType() == SecType.OPT) {
+//			log("opt keys: "+ new ArrayList<>(_optionTopTasks.keySet()));
+//			return _optionTopTasks.get(jobKey);
+//		}
+//		log("top keys: "+ new ArrayList<>(_topTasks.keySet()));
+//		return _topTasks.get(jobKey);
+//	}
+	
 	////////////////////////////////////////////////////////////////
 	// Account balance
 	////////////////////////////////////////////////////////////////
@@ -207,6 +225,15 @@ public class GatewayController extends BaseIBController {
 			for (String account : accList) {
 				log("--> Req account mv " + account);
 				_apiController.reqAccountUpdates(subscribe, account, accountMVHandler);
+//				-----------------------------------------------------------------------------------------
+//				- https://interactivebrokers.github.io/tws-api/account_updates.html
+//				-----------------------------------------------------------------------------------------
+//				only one account at a time can be subscribed at a time. Attempting a second 
+//				subscription without previously cancelling an active one will not yield any 
+//				error message although it will override the already subscribed account with the new one. 
+//				-----------------------------------------------------------------------------------------
+				sleep(1000);
+//				_apiController.reqAccountUpdates(false, account, accountMVHandler);
 			}
 		} else {
 			log("--> Req account mv default");
@@ -214,6 +241,14 @@ public class GatewayController extends BaseIBController {
 		}
 	}
 
+	protected String subscribeAccountStr;
+	public void changeSubscribeAccountMV(String ac) {
+		if (subscribeAccountStr != ac) {
+			subscribeAccountStr = ac;
+			_apiController.reqAccountUpdates(true, subscribeAccountStr, accountMVHandler);
+		}
+	}
+	
 	////////////////////////////////////////////////////////////////
 	// Account Summary
 	////////////////////////////////////////////////////////////////
@@ -228,7 +263,7 @@ public class GatewayController extends BaseIBController {
 		_apiController.reqAccountSummary("All", AccountSummaryTag.values(), accountSummaryHandler);
 		return _apiController.lastReqId();
 	}
-
+	
 	////////////////////////////////////////////////////////////////
 	// Order & trades updates.
 	////////////////////////////////////////////////////////////////
@@ -300,6 +335,19 @@ public class GatewayController extends BaseIBController {
 		return _apiController.lastReqId();
 	}
 	////////////////////////////////////////////////////////////////
+	// History data
+	////////////////////////////////////////////////////////////////
+	protected int queryHistoryDataToRedis(JSONObject j, Long id) {
+		String endDateTime = j.getString("endDateTime");
+		Integer duration = j.getInteger("duration");
+		IBContract contract = new IBContract(j.getJSONObject("contract"));
+
+		HistoricalDataHandler handler = new HistoricalDataHandler(id);
+		_apiController.reqHistoricalData(contract, endDateTime, duration, DurationUnit.DAY, BarSize._1_day, WhatToShow.TRADES, false, false, handler);
+		return _apiController.lastReqId();
+	}
+	
+	////////////////////////////////////////////////////////////////
 	// Life cycle and command processing
 	////////////////////////////////////////////////////////////////
 	@Override
@@ -352,6 +400,7 @@ public class GatewayController extends BaseIBController {
 				err("Failed to parse command " + e.getMessage());
 				return;
 			}
+			log("test: _twsConnected: "+ _twsConnected + ", _apiConnected: "+ _apiConnected);
 			final Long id = j.getLong("id");
 			info("<<< CMD " + id + " " + j.getString("cmd"));
 			String errorMsg = null;
@@ -392,9 +441,57 @@ public class GatewayController extends BaseIBController {
 				case "ACCOUNT_LIST":
 					response = JSON.toJSONString(accList);
 					break;
+				case "UPDATE_ACCOUNT_MV":
+					subscribeAccountMV();
+					break;
 				case "FIND_ACCOUNT_SUMMARY":
 					apiReqId = queryAccountSummary();
 					break;
+				case "FIND_HISTORY":
+//					Calendar cal = Calendar.getInstance(TimeZone.getTimeZone("GMT+8"));
+//					cal.add(Calendar.MONTH, -1);
+//					SimpleDateFormat form = new SimpleDateFormat("yyyyMMdd HH:mm:ss");
+//					String formatted = form.format(cal.getTime());
+//					20031126 15:59:00 US/Eastern
+//					formatted: 20230714
+//					20230714 11:08:49
+//					20230814 23:59:59 Asia/Hong_Kong
+////					log("formatted: " + formatted);
+//					String endDateTime = j.getString("endDateTime");
+//					log("endDateTime: " + endDateTime);
+//					IBContract contract = new IBContract(j.getJSONObject("contract"));
+//					HistoricalDataHandler ss = new HistoricalDataHandler();
+////    				(Contract contract, String endDateTime, int duration, DurationUnit durationUnit, BarSize barSize, WhatToShow whatToShow, boolean rthOnly, boolean keepUpToDate, IHistoricalDataHandler handler)
+//					_apiController.reqHistoricalData(contract, endDateTime, 3, DurationUnit.DAY, BarSize._1_day, WhatToShow.TRADES, false, false, ss);
+					apiReqId = queryHistoryDataToRedis(j, id);
+					break;
+//				case "UPDATE_OPT_GREEKS":
+////					_apiController.reqAccountUpdates(true, "All", accountMVHandler);
+//					for (IBContract c : accountMVHandler.ibc_cache.values()) {
+//						String jobKey = c.exchange() + "/" + c.shownName();
+//
+//						if (c.secType() == SecType.CASH) {
+//							continue;
+//						}
+//						else if (c.secType() == SecType.OPT) {
+//							OptionTopMktDataHandler optHandler = _optionTopTasks.get(jobKey);
+//							if (optHandler == null) {
+//								optHandler = new OptionTopMktDataHandler(c, true, true);
+//								_optionTopTasks.put(jobKey, optHandler);
+//							}
+////							_apiController.reqOptionVolatility(c, 0, 0, optHandler);
+////							_apiController.reqTopMktData(c, "", true , false, optHandler);
+//							_apiController.reqOptionMktData(c, "", true , false, optHandler);
+//						} else {
+//							TopMktDataHandler handler = _topTasks.get(jobKey);
+//							if (handler == null) {
+//								handler = new TopMktDataHandler(c, true, true);
+//								_topTasks.put(jobKey, handler);
+//							}
+//							_apiController.reqTopMktData(c, "", true , false, handler);
+//						}
+//					}
+//					break;
 				default:
 					errorMsg = "Unknown cmd " + j.getString("cmd");
 					err(errorMsg);

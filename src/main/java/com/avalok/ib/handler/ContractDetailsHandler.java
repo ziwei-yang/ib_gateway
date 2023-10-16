@@ -14,6 +14,7 @@ import com.avalok.ib.GatewayController;
 import com.avalok.ib.IBContract;
 import com.bitex.util.Redis;
 import com.ib.client.*;
+import com.ib.client.Types.SecType;
 import com.ib.controller.ApiController.*;
 
 // Write STK and FUT info to redis:
@@ -49,12 +50,12 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			ibc.copyFrom(result);
 			return true;
 		}
+		if (GW_CONTROLLER != null) queryDetails(ibc);
 		return false;
 	}
 
 	public static JSONObject findDetails(IBContract ibc) {
 		if (GW_CONTROLLER != null) queryDetails(ibc);
-
 		if (ibc.isFullDetailed() == false)
 			fillIBContract(ibc);
 		String key = ibc.shownName();
@@ -66,8 +67,10 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 
 	protected static void queryDetails(IBContract ibc) {
 		String key = ibc.shownName();
+		log("in queryDetails, key: " + key);
 		if (key == null) key = ibc.toString();
 		Long lastQueryT = QUERY_HIS.get(key);
+
 		if (lastQueryT == null || lastQueryT + 10_000 < System.currentTimeMillis()) {
 			QUERY_HIS.put(key, System.currentTimeMillis());
 			warn("--> Auto query contract details:" + key);
@@ -107,6 +110,13 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 			JSONObject json = writeDetail("IBGateway:Contract:"+shortName, detail);
 			KNOWN_CONTRACTS.put(shortName, ibc);
 			KNOWN_CONTRACT_DETAILS.put(shortName, json);
+//			if (ibc.exchange().equals( "SMART")) {
+//				String fixShortName = shortName.replace("SMART", ibc.primaryExch());
+//				log("Fix shortName: " + shortName + " -> " + fixShortName);
+//				JSONObject json2 = writeDetail("IBGateway:Contract:" + fixShortName, detail);
+//				KNOWN_CONTRACTS.put(fixShortName, ibc);
+//				KNOWN_CONTRACT_DETAILS.put(fixShortName, json2);
+//			}
 		}
 	}
 
@@ -152,11 +162,19 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
-		// cannot find symbol minSize & sizeIncrement & suggestedSizeIncrement at API version 9.76
-		// j.put("minSize", detail.minSize().longValue());
-		// j.put("sizeIncrement", detail.sizeIncrement().longValue());
-		// j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
 		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
+		
+//		if (detail.contract().secType() == SecType.OPT) {
+//			OptionTopMktDataHandler handler = (OptionTopMktDataHandler) GW_CONTROLLER.findMktDataHandler(new IBContract(detail.contract()));
+//			if (handler != null) log("opt lastPrice: " + handler.lastTickPrice);
+//			else log(handler);
+//		} else {
+//			TopMktDataHandler handler = (TopMktDataHandler) GW_CONTROLLER.findMktDataHandler(new IBContract(detail.contract()));
+//			if (handler != null) log("top lastPrice: " + handler.lastTickPrice);
+//			else log(handler);
+//		}
+//		j.put("lastPrice", "");
+
 		log(">>> Redis " + key);
 		Redis.set(key, j);
 		return j;
@@ -205,11 +223,16 @@ public class ContractDetailsHandler implements IContractDetailsHandler {
 		j.put("nextOptionType", detail.nextOptionType());
 		j.put("nextOptionPartial", detail.nextOptionPartial());
 		j.put("notes", detail.notes());
-		// cannot find symbol minSize & sizeIncrement & suggestedSizeIncrement at API version 9.76
-		// j.put("minSize", detail.minSize().longValue());
-		// j.put("sizeIncrement", detail.sizeIncrement().longValue());
-		// j.put("suggestedSizeIncrement", detail.suggestedSizeIncrement().longValue());
 		j.put("_timestamp", System.currentTimeMillis()); // Write generated timestamp to redis
+
+//		if (detail.contract().secType() == SecType.OPT) {
+//			OptionTopMktDataHandler handler = (OptionTopMktDataHandler) GW_CONTROLLER.findMktDataHandler(new IBContract(detail.contract()));
+//			if (handler != null) log("opt lastPrice: " + handler.lastTickPrice);
+//		} else {
+//			TopMktDataHandler handler = (TopMktDataHandler) GW_CONTROLLER.findMktDataHandler(new IBContract(detail.contract()));
+//			if (handler != null) log("top lastPrice: " + handler.lastTickPrice);
+//		}
+//		j.put("lastPrice", "");
 		return j;
 	}
 

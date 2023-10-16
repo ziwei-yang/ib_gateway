@@ -52,6 +52,7 @@ public class SingleOrderHandler implements IOrderHandler {
 		_order.setStatus(status, filled, remaining, avgFillPrice, permId, parentId, lastFillPrice, clientId, whyHeld, mktCapPrice);
 		_orderCacheHandler.writeToCacheAndOMS(_order);
 
+		_ibController.changeSubscribeAccountMV(_order.account());
 //		Will be slow to use in live trade
 //		if (filled > 0) {
 //			log("Force req account balance again after 1 seconds");

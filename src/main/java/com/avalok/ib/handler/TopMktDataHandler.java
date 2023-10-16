@@ -7,6 +7,7 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.avalok.ib.IBContract;
 import com.bitex.util.Redis;
+import com.ib.client.Contract;
 import com.ib.client.TickAttrib;
 import com.ib.client.TickType;
 import com.ib.controller.ApiController.ITopMktDataHandler;
@@ -48,14 +49,28 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 			multiplier = 1;
 		else
 			multiplier = Double.parseDouble(contract.multiplier());
+		Long t0 = System.currentTimeMillis();
 		while (true) {
 			JSONObject contractDetail = ContractDetailsHandler.findDetails(contract);
 			if (contractDetail != null) {
 				marketDataSizeMultiplier = contractDetail.getIntValue("mdSizeMultiplier");
 				break;
 			}
+
+			if (t0 < System.currentTimeMillis() - 2000) {
+				Contract c = contract;
+				c.exchange("SMART");
+				IBContract smartIbc = new IBContract(c);
+				JSONObject smartContractDetail = ContractDetailsHandler.findDetails(smartIbc);
+				if (smartContractDetail != null) {
+					info("WARNING!! FIX _contract.exchange FROM"+ _contract.exchange() + " to SMART");
+					_contract = smartIbc;
+					marketDataSizeMultiplier = smartContractDetail.getIntValue("mdSizeMultiplier");
+					break;
+				}
+			}
 			log("wait for contract details " + publishODBKChannel);
-			sleep(1);
+			sleep(200);
 		}
 		// Pre-build snapshot
 		topDataSnapshot.add(topBids);
@@ -252,7 +267,7 @@ public class TopMktDataHandler implements ITopMktDataHandler{
 	// tickSize() tickType LAST_SIZE size 1 (if have more trade at same time)
 	/////////////////////////////////////////////////////
 	private Long lastTickTime = 0l;
-	private Double lastTickPrice = null;
+	public Double lastTickPrice = null;
 	private Double lastTickSize = null;
 	private JSONObject lastTrade;
 
